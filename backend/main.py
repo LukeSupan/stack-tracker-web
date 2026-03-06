@@ -19,7 +19,8 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-# from games.generic import run as run_generic # this is all generic games with no roles. less info but, it does the job
+# currently implemented tags
+# they all expect different results
 GAME_RUNNERS = {
     "hero_shooter": run_hero_shooter,
     "hero_shooter_versus": run_hero_shooter_versus,
@@ -34,7 +35,6 @@ GAME_RUNNERS = {
 
     "one_vs_one": run_one_vs_one,
 }
-
 
 @app.post("/stats")
 def get_stats(payload: dict):
