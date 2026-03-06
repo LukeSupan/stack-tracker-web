@@ -2,7 +2,6 @@ from collections import defaultdict
 from core.aggregation import update_comp_stats, update_player_stats, update_role_comp_stats
 from core.models import make_player, make_comp, make_role_comp
 from core.parsing import parse_game_line_roles
-from core.printing import print_non_role_comps, print_player_stats, print_role_comps
 from core.utils import serialize
 
 from core.config import GAME_CONFIGS

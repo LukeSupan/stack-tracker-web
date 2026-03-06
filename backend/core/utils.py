@@ -4,26 +4,28 @@ from collections import defaultdict
 from core.parsing import parse_name_and_tags
 import json
 
-# serialize key
-def serialize_key(k):
-    if isinstance(k, tuple):
-        if isinstance(k[0], tuple):
-            # nested tuples = matchup: (('kayla','luke'), ('aiden','bruh'))
-            teams = [",".join(item) for item in k]
-            return " vs ".join(teams)
+# serialize the keys, which is to get rid of tuples
+def serialize_key(key):
+    if isinstance(key, tuple):
+        if isinstance(key[0], tuple):
+            # in this case, we got a matchup of teams, each individual team is a tuple we gotta make it a string.
+            # like -> (('kayla', 'luke'), ('aiden','bruh')) -> "kayla,luke vs aiden,bruh"
+            teams = [",".join(item) for item in key]
+            return " vs ".join(teams) # its now a string that we can easily parse
         else:
-            # flat tuple = comp: ('kayla', 'luke', 'mar')
-            return ",".join(k)
-    return str(k)
+            # its a simple flat tuple like ('kayla', 'luke', 'mar')
+            return ",".join(key) # join them and make it a string, nice
+    return str(key)
 
-# serialize the default dict stuff. it sucks man
+# serialize, this is to get rid of defaultdicts, and tuples in keys
+# json understand the following:
+# dict, list, str, int, float, bool None.
+# this means no tuples (in our keys), and no defaultdicts, which we are using
 def serialize(obj):
-    if isinstance(obj, (defaultdict, dict)):
-        return {serialize_key(k): serialize(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [serialize(i) for i in obj]
+    if isinstance(obj, (defaultdict, dict)): # if we've got a default dict or a normal dict, check inside
+        return {serialize_key(key): serialize(value) for key, value in obj.items()} # convert each key in serialize_key, and every value for the key. return a normal dict once done
     else:
-        return obj
+        return obj # return a value once we get something accepted
     
 
 # result is winrate, given wins and games, returns 0 for no games
