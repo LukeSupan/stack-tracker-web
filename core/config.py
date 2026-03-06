@@ -1,0 +1,20 @@
+# used for printing the roles with titles.
+# makes it easy to copy paste the output into an ai to ask for analytics or a tier list
+# i think that is one of the most fun uses of this by far
+
+# anytime i add a new game, i can easily add roles here
+# used for the printing once data is computed
+GAME_CONFIGS = {
+    "hero_shooter": ["Tank", "Dps", "Support"],
+    "hero_shooter_versus": ["Tank", "Dps", "Support"],
+
+    "lanes": ["Side", "Mid"],
+    "lanes_detailed": ["Left", "Mid", "Right"],
+
+    "generic": ["Player"],
+    "generic_versus": ["Player"],
+
+    "moba": ["Top", "Jungle", "Mid", "ADC", "Support"],
+
+    "one_vs_one": ["Player"],
+}
