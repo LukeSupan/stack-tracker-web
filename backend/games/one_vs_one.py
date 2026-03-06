@@ -1,8 +1,10 @@
 from collections import defaultdict
 from core.aggregation import update_player_stats, update_matchup_stats
-from core.models import make_player, make_comp, make_matchup
+from core.models import make_player, make_matchup
 from core.parsing import parse_game_line_roles
 from core.printing import print_player_stats, print_matchups
+from core.utils import serialize
+
 from core.config import GAME_CONFIGS
 
 def run(games):
@@ -34,6 +36,8 @@ def run(games):
         # update matchups
         update_matchup_stats(matchup_stats, teams_list, results_list)
 
-    # printing final results
-    print_player_stats(player_stats, role_labels)
-    print_matchups(matchup_stats, 1) # TODO REPLACE WITH DECLARED NUMBER
+
+    return serialize({
+        'player_stats': player_stats,
+        'matchup_stats': matchup_stats
+    })

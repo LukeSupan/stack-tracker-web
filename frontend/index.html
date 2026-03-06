@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Stack Tracker</title>
+    <style>
+        body { font-family: monospace; background: #1a1a1a; color: #e0e0e0; padding: 20px; }
+        textarea { width: 100%; background: #2a2a2a; color: #e0e0e0; border: 1px solid #444; padding: 8px; }
+        button { margin-top: 8px; padding: 8px 20px; background: #444; color: #fff; border: none; cursor: pointer; }
+        button:hover { background: #555; }
+        h2 { color: #aaa; border-bottom: 2px solid #444; padding-bottom: 4px; margin-top: 32px; }
+        h3 { color: #888; margin-top: 20px; }
+        .player { margin: 16px 0; }
+        .player-name { font-size: 1.1em; font-weight: bold; color: #fff; margin-bottom: 4px; }
+        .stat-row { display: flex; justify-content: space-between; max-width: 300px; padding: 2px 0; color: #ccc; }
+        .stat-label { color: #888; }
+        .comp-row, .matchup-row { padding: 4px 0; color: #ccc; max-width: 500px; display: flex; justify-content: space-between; }
+        .matchup-block { margin: 8px 0; border-left: 2px solid #444; padding-left: 12px; }
+        hr { border-color: #333; }
+    </style>
+</head>
+<body>
+    <textarea id="input" rows="10" placeholder="Paste your game data here..."></textarea>
+    <br>
+    <button onclick="submitData()">Submit</button>
+
+    <div id="output"></div>
+
+    <script>
+        async function submitData() {
+            const raw = document.getElementById("input").value
+            const lines = raw.split("\n").map(l => l.trim()).filter(l => l)
+
+            const res = await fetch("http://127.0.0.1:8000/stats", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ lines })
+            })
+
+            const data = await res.json()
+            document.getElementById("output").innerHTML = render(data)
+        }
+
+        function pct(wins, games) {
+            if (games === 0) return "0.0%"
+            return (wins / games * 100).toFixed(1) + "%"
+        }
+
+        function row(label, value) {
+            return `<div class="stat-row"><span class="stat-label">${label}</span><span>${value}</span></div>`
+        }
+
+        function render(data) {
+            let html = ""
+
+            // PLAYER STATS
+            html += `<h2>PLAYER STATS</h2>`
+            for (const [name, p] of Object.entries(data.player_stats)) {
+                html += `<div class="player">`
+                html += `<div class="player-name">${name}</div>`
+                const roleKeys = Object.keys(p.roles)
+                if (!(roleKeys.length === 1 && roleKeys[0] === "Player")) {
+                    for (const [role, rs] of Object.entries(p.roles)) {
+                        html += row(role, `${rs.wins}W / ${rs.losses}L`)
+                    }
+                }
+                html += row("Overall", `${p.wins}W / ${p.losses}L`)
+                html += row("Winrate", pct(p.wins, p.games))
+                if (p.mvps > 0) {
+                    html += row("MVPs", p.mvps)
+                    html += row("MVP Rate", pct(p.mvps, p.games))
+                    html += row("MVP W/L", `${p.mvpwins}W / ${p.mvplosses}L`)
+                }
+                html += `</div><hr>`
+            }
+
+            // COMP STATS
+            if (data.comp_stats) {
+                html += `<h2>COMP STATS</h2>`
+                for (const [comp, s] of Object.entries(data.comp_stats)) {
+                    html += `<div class="comp-row"><span>${comp.replaceAll(",", ", ")}</span><span>${pct(s.wins, s.games)} (${s.games} games)</span></div>`
+                }
+            }
+
+            // ROLE COMP STATS
+            if (data.role_comp_stats) {
+                html += `<h2>ROLE COMP STATS</h2>`
+                for (const [comp, s] of Object.entries(data.role_comp_stats)) {
+                    html += `<div class="comp-row"><span>${comp}</span><span>${pct(s.wins, s.games)} (${s.games} games)</span></div>`
+                }
+            }
+
+            // MATCHUPS
+            if (data.matchup_stats) {
+                html += `<h2>MATCHUPS</h2>`
+                for (const [matchup, m] of Object.entries(data.matchup_stats)) {
+                    const teams = matchup.split(" vs ").map(t => t.replaceAll(",", ", "))
+                    const winsEntries = Object.entries(m.wins)
+                    html += `<div class="matchup-block">`
+                    html += `<div>${teams[0]} <strong>vs</strong> ${teams[1]}</div>`
+                    for (const [team, wins] of winsEntries) {
+                        html += `<div class="stat-row"><span class="stat-label">${team.replaceAll(",", ", ")}</span><span>${wins} wins</span></div>`
+                    }
+                    html += row("Total Games", m.games)
+                    html += `</div>`
+                }
+            }
+
+            return html
+        }
+    </script>
+</body>
+</html>

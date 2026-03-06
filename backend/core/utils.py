@@ -1,5 +1,30 @@
 # import functions
+from collections import defaultdict
+
 from core.parsing import parse_name_and_tags
+import json
+
+# serialize key
+def serialize_key(k):
+    if isinstance(k, tuple):
+        if isinstance(k[0], tuple):
+            # nested tuples = matchup: (('kayla','luke'), ('aiden','bruh'))
+            teams = [",".join(item) for item in k]
+            return " vs ".join(teams)
+        else:
+            # flat tuple = comp: ('kayla', 'luke', 'mar')
+            return ",".join(k)
+    return str(k)
+
+# serialize the default dict stuff. it sucks man
+def serialize(obj):
+    if isinstance(obj, (defaultdict, dict)):
+        return {serialize_key(k): serialize(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [serialize(i) for i in obj]
+    else:
+        return obj
+    
 
 # result is winrate, given wins and games, returns 0 for no games
 def winrate(wins, games):

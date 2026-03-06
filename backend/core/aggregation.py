@@ -114,5 +114,4 @@ def update_matchup_stats(matchup_stats, teams_list, results_list):
     for comp_key, result in team_data:
         if result.lower() == "win":
             matchup_stats[matchup_key]["wins"][comp_key] += 1
-        else:
-            matchup_stats[matchup_key]["losses"][comp_key] += 1
+
