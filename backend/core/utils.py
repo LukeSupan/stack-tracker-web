@@ -124,3 +124,6 @@ def role_comp_team_size(role_comp_key):
             for name in names.split(", "):
                 players.add(name)
     return len(players)
+
+def print_logs(player_stats):
+    print(f"Players: {list(player_stats.keys())}", flush=True) # force printing for logs

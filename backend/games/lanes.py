@@ -2,7 +2,7 @@ from collections import defaultdict
 from core.aggregation import update_comp_stats, update_player_stats, update_role_comp_stats
 from core.models import make_player, make_comp, make_role_comp
 from core.parsing import parse_game_line_roles
-from core.utils import serialize
+from core.utils import serialize, print_logs
 
 from core.config import GAME_CONFIGS
 
@@ -20,8 +20,8 @@ def run(games):
         update_player_stats(player_stats, team, result) # each player
         update_comp_stats(comp_stats, team, result) # each comp, regardless of role
         update_role_comp_stats(role_comp_stats, team, result, role_labels) # specific roles makes comps unique
-
-    print(f"Players: {list(player_stats.keys())}")
+        
+    print_logs(player_stats)
 
     return serialize({
         'player_stats': player_stats,

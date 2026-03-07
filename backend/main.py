@@ -51,7 +51,7 @@ def get_stats(payload: dict):
     games = lines[1:]
 
     # logging information
-    print(f"game tag: {game_name}, lines: {len(lines)}")
+    print(f"game tag: {game_name}, games: {len(games)}", flush=True)
 
     # get the appropriate game runner
     runner = GAME_RUNNERS.get(game_name)

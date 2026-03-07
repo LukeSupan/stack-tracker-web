@@ -2,7 +2,7 @@ from collections import defaultdict
 from core.aggregation import update_player_stats, update_matchup_stats
 from core.models import make_player, make_matchup
 from core.parsing import parse_game_line_roles
-from core.utils import serialize
+from core.utils import serialize, print_logs
 
 from core.config import GAME_CONFIGS
 
@@ -35,7 +35,7 @@ def run(games):
         # update matchups
         update_matchup_stats(matchup_stats, teams_list, results_list)
 
-    print(f"Players: {list(player_stats.keys())}")
+    print_logs(player_stats)
 
     return serialize({
         'player_stats': player_stats,
