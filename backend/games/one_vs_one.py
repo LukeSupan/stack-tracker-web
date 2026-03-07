@@ -35,6 +35,7 @@ def run(games):
         # update matchups
         update_matchup_stats(matchup_stats, teams_list, results_list)
 
+    print(f"Players: {list(player_stats.keys())}")
 
     return serialize({
         'player_stats': player_stats,

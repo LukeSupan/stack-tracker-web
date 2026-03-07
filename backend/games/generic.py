@@ -19,6 +19,7 @@ def run(games):
         update_player_stats(player_stats, team, result) # each player
         update_comp_stats(comp_stats, team, result) # each comp, regardless of role
     
+    print(f"Players: {list(player_stats.keys())}")
     
     return serialize({
         'player_stats': player_stats,

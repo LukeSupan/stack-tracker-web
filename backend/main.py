@@ -44,10 +44,14 @@ GAME_RUNNERS = {
 
 @app.post("/stats")
 def get_stats(payload: dict):
+
     # frontend makes json object lines as key. get the payload with that key
     lines = payload["lines"]
     game_name = lines[0].lower().strip()
     games = lines[1:]
+
+    # logging information
+    print(f"game tag: {game_name}, lines: {len(lines)}")
 
     # get the appropriate game runner
     runner = GAME_RUNNERS.get(game_name)

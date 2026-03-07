@@ -21,6 +21,7 @@ def run(games):
         update_comp_stats(comp_stats, team, result) # each comp, regardless of role
         update_role_comp_stats(role_comp_stats, team, result, role_labels) # specific roles makes comps unique
 
+    print(f"Players: {list(player_stats.keys())}")
 
     return serialize({
         'player_stats': player_stats,
