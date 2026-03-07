@@ -1,5 +1,7 @@
 import { useState } from "react"
 
+const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000"
+
 function StatRow({ label, value }) {
   return (
     <div className="flex justify-between items-center py-0.5 text-sm">
@@ -82,7 +84,7 @@ export default function App() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch("http://127.0.0.1:8000/stats", {
+      const res = await fetch(`${API_URL}/stats`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lines })
