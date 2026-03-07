@@ -1,4 +1,7 @@
 # Stack Tracker for Web
+
+hey its me luke. frontend right now is temporary. i know its bad. claude made it. thank you claude but i will do it better.
+
 This is intended to be used socially; if you are hardcore about your specific stats, there are online trackers that do this better.
 This specifically tracks:
 - Individual stats overall and role-based

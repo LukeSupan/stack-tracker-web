@@ -40,7 +40,7 @@ function PlayerCard({ name, player }) {
 function Section({ title, children }) {
   return (
     <div className="mb-8">
-      <h2 className="text-zinc-400 text-xs font-bold uppercase tracking-widest mb-3 border-b border-zinc-800 pb-2">{title}</h2>
+      <h2 className="text-zinc-400 text-base font-bold uppercase tracking-widest mb-3 border-b border-zinc-800 pb-2">{title}</h2>
       {children}
     </div>
   )
@@ -60,7 +60,7 @@ function MatchupBlock({ matchup, data }) {
   const teams = matchup.split(" vs ").map(t => t.replaceAll(",", ", "))
   return (
     <div className="border-l-2 border-zinc-700 pl-4 mb-4">
-      <div className="text-zinc-300 text-sm mb-2">
+      <div className="text-zinc-300 text-base mb-2">
         <span>{teams[0]}</span>
         <span className="text-zinc-600 mx-2">vs</span>
         <span>{teams[1]}</span>
@@ -104,12 +104,20 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-8 font-mono">
-      <h1 className="text-2xl font-bold text-white mb-6">Stack Tracker</h1>
+      <h1 className="text-3xl font-bold text-white mb-3">Stack Tracker</h1>
+
+      <a 
+        href="https://github.com/LukeSupan/stack-tracker-web/blob/main/README.md"
+        target="_blank"
+        className="text-zinc-500 hover:text-zinc-300 text-base underline block mb-6"
+      >
+        How to use
+      </a>
 
       {/* Input */}
       <div className="mb-8 max-w-2xl">
         <textarea
-          className="w-full bg-zinc-900 border border-zinc-700 text-zinc-200 text-sm p-3 rounded-lg resize-none focus:outline-none focus:border-zinc-500"
+          className="w-full bg-zinc-900 border border-zinc-700 text-zinc-200 text-base p-3 rounded-lg resize-none focus:outline-none focus:border-zinc-500"
           rows={8}
           placeholder="Paste your game data here..."
           value={input}
@@ -122,7 +130,7 @@ export default function App() {
         >
           {loading ? "Loading..." : "Submit"}
         </button>
-        {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
+        {error && <p className="text-red-400 text-base mt-2">{error}</p>}
       </div>
 
       {/* Results */}
