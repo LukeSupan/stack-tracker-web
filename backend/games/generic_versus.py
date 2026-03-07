@@ -34,6 +34,7 @@ def run(games):
             update_comp_stats(comp_stats, team, result)
 
         # update matchups
+        
         update_matchup_stats(matchup_stats, teams_list, results_list)
     
     
