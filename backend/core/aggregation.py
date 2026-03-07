@@ -110,8 +110,12 @@ def update_matchup_stats(matchup_stats, teams_list, results_list):
     # add games
     matchup_stats[matchup_key]["games"] += 1
 
-    # add wins and losses
+    # add wins
     for comp_key, result in team_data:
+
+        # initialize the wins, makes frontend cleaner
+        if comp_key not in matchup_stats[matchup_key]["wins"]:
+            matchup_stats[matchup_key]["wins"][comp_key] = 0
         if result.lower() == "win":
             matchup_stats[matchup_key]["wins"][comp_key] += 1
 
