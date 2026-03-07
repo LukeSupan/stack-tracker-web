@@ -59,8 +59,6 @@ def get_stats(payload: dict):
     if not runner:
         raise HTTPException(status_code=400, detail=f"{game_name} is not an accepted flag") # error for bad flag
     try:
-        return runner(games)
+        return runner(games) # run the runner since the tag is good, but still check for errors
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}") # error for bad game
-    
-    return(runner(games))
