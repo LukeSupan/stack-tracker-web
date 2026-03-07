@@ -62,5 +62,3 @@ def get_stats(payload: dict):
         return runner(games)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}") # error for bad game
-    
-    return(runner(games))
