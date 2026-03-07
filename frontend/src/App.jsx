@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000"
 
@@ -81,12 +82,35 @@ export default function App() {
   const [loading, setLoading] = useState(false)
 
   // paste mode state
-  const [pasteInput, setPasteInput] = useState("")
+  const [pasteInput, setPasteInput] = useState(() => {
+    return localStorage.getItem("pasteInput") || ""
+  })
 
   // easy mode state
-  const [gameTag, setGameTag] = useState("")
-  const [games, setGames] = useState([])
+  const [gameTag, setGameTag] = useState(() => {
+    return localStorage.getItem("gameTag") || ""
+  })
+  
+  // games setting
+  const [games, setGames] = useState(() => {
+    const saved = localStorage.getItem("games")
+    return saved ? JSON.parse(saved) : []
+  })
+
   const [currentLine, setCurrentLine] = useState("")
+
+  // local storage setting
+  useEffect(() => {
+    localStorage.setItem("pasteInput", pasteInput)
+  }, [pasteInput])
+
+  useEffect(() => {
+    localStorage.setItem("gameTag", gameTag)
+  }, [gameTag])
+
+  useEffect(() => {
+    localStorage.setItem("games", JSON.stringify(games))
+  }, [games])
 
   // convert easy mode state to lines array for the API
   function easyToLines() {
