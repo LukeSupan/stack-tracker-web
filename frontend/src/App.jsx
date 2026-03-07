@@ -104,7 +104,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-8 font-mono">
-      <h1 className="text-3xl font-bold text-white mb-3">Stack Tracker</h1>
+      <h1 className="text-3xl font-bold text-white mb-3">Team Stat Tracker</h1>
 
       <a 
         href="https://github.com/LukeSupan/stack-tracker-web/blob/main/README.md"
