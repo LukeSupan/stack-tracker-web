@@ -23,7 +23,7 @@ def parse_game_line_roles(line, role_labels):
     if len(parts) != expected:
         raise ValueError(
             f"Bad input: {line}\n"
-            f"Expected {expected} sections but got {len(parts)}"
+            f"Check the formatting for that line."
         )
     
     *role_parts, result = parts
