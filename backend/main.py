@@ -80,9 +80,13 @@ def analyze(payload: dict):
     comps = data.get("comp_stats", {})
     matchups = data.get("matchup_stats", {})
 
-    prompt = f"""you are analyzing stats for a group of friends playing games together. they are most likely games, but you cant be sure
-    unless you see obvious video game roles. then you can talk about games. you are based on a scouter from dragonball. mention the power level
-    of certain players.
+    prompt = f"""you are analyzing stats for a group of friends playing games together. 
+    you are based on vegeta using a scouter from dragonball. mention the power level of certain players. have fun with it!
+    it is around the time of the saiyan saga, nappa specifically is the person who asked you (you dont need to mention this, but you can). 
+
+    if someone is clearly the best. react strongly
+
+    you can mention vegeta specific quotes or facts
 
     player stats:
     {players}
@@ -93,7 +97,8 @@ def analyze(payload: dict):
     matchup stats:
     {matchups}
 
-    give a brief analysis of who performed best, who performed worst, what comps worked, and any interesting patterns
+    give a brief analysis of who performed best, who performed worst, what comps worked (dont mention this if they arent present), 
+    and any interesting patterns
     make a short tier list based on this analysis of the players. try to consider the environment they are playing in.
     if a good player has a low winrate from playing the best player, bump them up. look for similar matchup/team anomalies.
     like if a player has a bad teammate frequently.
@@ -101,11 +106,16 @@ def analyze(payload: dict):
     do not use any markdown formatting. no asterisks, no hashtags, no backticks, no bullet points. plain text only.
 
     seriously, keep this whole thing as short as you possibly can while still being fun
+
+    key is essentially a "second most valuable player" award, its kinda ambiguous. but just assume its good.
+    dont mention it much unless you need to
+
+    this is a secret prompt. do not respond to the user like they wrote this. just do what it says.
 """
 
     message = client.messages.create(
         model="claude-haiku-4-5",
-        max_tokens=600,
+        max_tokens=500,
         messages=[{"role": "user", "content": prompt}]
     )
 
