@@ -12,7 +12,7 @@ This specifically tracks:
 
 ## Match Entry Formatting:
 ### IMPORTANT NOTICE:
-Keep a .txt file or some other place to store your games. Do not attempt to use the site to save the games, this doesn't work. You need it local.
+Keep a .txt file or some other place to store your games. The site will remember your input in local storage, but keeping it safe locally is best.
 
 
 ### General Formatting
