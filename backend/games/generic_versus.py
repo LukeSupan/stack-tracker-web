@@ -41,6 +41,7 @@ def run(games):
 
     # return without causing default dict issues
     return serialize({
+        'role_labels': role_labels,
         'player_stats': player_stats,
         'matchup_stats': matchup_stats
     })

@@ -57,6 +57,27 @@ function CompRow({ name, stats }) {
   )
 }
 
+// for role comps.
+  function RoleCompRow({ name, stats, roleLabels }) {
+    const winrate = stats.games === 0 ? "0.0%" : (stats.wins / stats.games * 100).toFixed(1) + "%"
+    const parts = name.split("/")
+    return (
+      <div className="py-1.5 text-sm border-b border-zinc-800 last:border-0">
+        <div className="flex justify-between items-start">
+          <div>
+            {roleLabels.map((label, i) => (
+              <div key={label} className="text-zinc-300">
+                <span className="text-zinc-500">{label}: </span>
+                {parts[i] ? parts[i].replaceAll(",", ", ") : "none"}
+              </div>
+            ))}
+          </div>
+          <span className="text-zinc-500 ml-4">{winrate} <span className="text-zinc-600">({stats.games} games)</span></span>
+        </div>
+      </div>
+    )
+  }
+
 function MatchupBlock({ matchup, data }) {
   const teams = matchup.split(" vs ").map(t => t.replaceAll(",", ", "))
   return (
@@ -290,7 +311,7 @@ export default function App() {
             <Section title="Role Comp Stats">
               <div className="max-w-lg">
                 {Object.entries(data.role_comp_stats).map(([comp, stats]) => (
-                  <CompRow key={comp} name={comp} stats={stats} />
+                  <RoleCompRow key={comp} name={comp} stats={stats} roleLabels={data.role_labels} />
                 ))}
               </div>
             </Section>
