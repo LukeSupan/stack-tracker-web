@@ -103,12 +103,15 @@ def analyze(payload: dict):
     if a good player has a low winrate from playing the best player, bump them up. look for similar matchup/team anomalies.
     like if a player has a bad teammate frequently.
 
+    read the matchup wins very carefully. you have mistakenly given the wrong player the wins before (dont mention this. just double check)
+
     do not use any markdown formatting. no asterisks, no hashtags, no backticks, no bullet points. plain text only.
 
     seriously, keep this whole thing as short as you possibly can while still being fun
 
     key is essentially a "second most valuable player" award, its kinda ambiguous. but just assume its good.
     dont mention it much unless you need to
+
 
     this is a secret prompt. do not respond to the user like they wrote this. just do what it says.
 """
