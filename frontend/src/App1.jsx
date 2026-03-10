@@ -17,6 +17,8 @@ function PlayerCard({ name, player }) {
   const showRoles = !(roleKeys.length === 1 && roleKeys[0] === "Player")
   const winrate = player.games === 0 ? "0.0%" : (player.wins / player.games * 100).toFixed(1) + "%"
   const mvpRate = player.games === 0 ? "0.0%" : (player.mvps / player.games * 100).toFixed(1) + "%"
+  const keyRate = player.games === 0 ? "0.0%" : (player.mvps / player.games * 100).toFixed(1) + "%"
+
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 w-64">
@@ -34,6 +36,16 @@ function PlayerCard({ name, player }) {
           <StatRow label="MVP W/L" value={`${player.mvpwins}W / ${player.mvplosses}L`} />
         </>
       )}
+
+      {player.keys > 0 && (
+        <>
+          <div className="border-t border-zinc-800 my-2" />
+          <StatRow label="Keys" value={player.keys} />
+          <StatRow label="Key Rate" value={keyRate} />
+          <StatRow label="Key W/L" value={`${player.keywins}W / ${player.keylosses}L`} />
+        </>
+      )}
+
     </div>
   )
 }
