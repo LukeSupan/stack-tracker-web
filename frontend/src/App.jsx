@@ -180,12 +180,14 @@ FULL EXAMPLE (copy paste to try it)
 function HowToUseModal({ onClose }) {
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-zinc-700 border border-zinc-500 max-w-2xl w-full max-h-screen overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between mb-4">
+      <div className="bg-zinc-700 border border-zinc-500 max-w-2xl w-full flex flex-col" style={{maxHeight:"90vh"}} onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center p-6 pb-4 border-b border-zinc-500 shrink-0">
           <span className="text-amber-400 text-base font-black uppercase tracking-widest">How to Use</span>
-          <button onClick={onClose} className="text-zinc-100 hover:text-white">×</button>
+          <button onClick={onClose} className="text-zinc-100 hover:text-white text-2xl leading-none">×</button>
         </div>
-        <pre className="text-zinc-100 text-sm leading-relaxed whitespace-pre-wrap font-mono">{HOW_TO_USE}</pre>
+        <div className="overflow-y-auto p-6 pt-4">
+          <pre className="text-zinc-100 text-sm leading-relaxed whitespace-pre-wrap font-mono">{HOW_TO_USE}</pre>
+        </div>
       </div>
     </div>
   )
@@ -193,7 +195,7 @@ function HowToUseModal({ onClose }) {
 
 
 export default function App() {
-  const [mode, setMode] = useState("easy")
+  const [mode, setMode] = useState("paste")
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -305,7 +307,7 @@ export default function App() {
         {/* Input panel — full width on mobile, fixed sidebar on desktop */}
         <div className="w-full lg:w-80 lg:shrink-0 lg:border-r lg:border-zinc-600 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto p-6 lg:p-8">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-lg font-bold text-white tracking-tight">Power Level</h1>
+            <h1 className="text-xl font-bold text-white tracking-tight">Power Level</h1>
             <button onClick={() => setShowHelp(true)} className="text-zinc-400 hover:text-amber-400 text-xs underline transition-colors">
               How to use
             </button>
@@ -314,7 +316,7 @@ export default function App() {
           <div>
             <div className="flex gap-2 mb-3 items-center">
               <button onClick={toggleMode} className="px-3 py-1 text-xs bg-zinc-600 hover:bg-zinc-500 text-zinc-400">
-                {mode === "paste" ? "Easy Input" : "Copy Paste"}
+                {mode === "paste" ? "→ Easy Input" : "→ Copy Paste"}
               </button>
               {gameCount > 0 && <span className="text-zinc-400 text-xs">{gameCount} game{gameCount !== 1 ? "s" : ""}</span>}
             </div>
@@ -322,7 +324,7 @@ export default function App() {
             {mode === "paste" ? (
               <textarea
                 className="w-full bg-zinc-700 border border-zinc-500 text-zinc-200 text-xs p-3 focus:outline-none focus:border-amber-400/40 resize-none"
-                rows={8}
+                rows={11}
                 placeholder="Paste your game data here..."
                 value={pasteInput}
                 onChange={e => setPasteInput(e.target.value)}
