@@ -24,6 +24,7 @@ def run(games):
     print_logs(player_stats)
 
     return serialize({
+        'role_labels': role_labels,
         'player_stats': player_stats,
         'comp_stats': comp_stats,
         'role_comp_stats': role_comp_stats,
