@@ -191,13 +191,6 @@ function HowToUseModal({ onClose }) {
   )
 }
 
-const DUMMY_ANALYSIS = `luke is the standout performer this session — leading in both MVPs and overall winrate at 80%. His flexibility across DPS and Support roles makes him the most valuable player on the roster.
-
-mar dominates in the Tank role with an 85.7% winrate, and the mar/luke/kayla trio is your most reliable comp. When that lineup runs together you're winning at a 75%+ clip.
-
-The biggest concern is the aiden/bruh/katie side — sitting at 20% across the board. The matchup against your core lineup is heavily one-sided which suggests a significant skill gap or compositional mismatch worth exploring.
-
-ray shows promise in limited games (66.7% over 3) — worth tracking more data before drawing conclusions.`
 
 export default function App() {
   const [mode, setMode] = useState("easy")
@@ -270,9 +263,21 @@ export default function App() {
 
   async function runScouter() {
     setAnalysisLoading(true)
-    await new Promise(r => setTimeout(r, 1200))
-    setAnalysis(DUMMY_ANALYSIS)
-    setAnalysisLoading(false)
+    setAnalysis(null)
+    try {
+      const res = await fetch(`${API_URL}/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data })
+      })
+      if (!res.ok) throw new Error("Scouter failed")
+      const json = await res.json()
+      setAnalysis(json.analysis)
+    } catch (e) {
+      setAnalysis("Scouter failed.")
+    } finally {
+      setAnalysisLoading(false)
+    }
   }
 
   const gameCount = mode === "paste" ? Math.max(0, pasteToLines().length - 1) : games.length

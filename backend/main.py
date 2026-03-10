@@ -1,8 +1,14 @@
-import sys
+import anthropic
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware # cors is needed for frontend
 
+# used locally
+from dotenv import load_dotenv
+load_dotenv()
+
 app = FastAPI() # create FastAPI app
+
+client = anthropic.Anthropic()  # reads api key
 
 # add middleware to allow frontend
 # this will be limited later
@@ -62,3 +68,45 @@ def get_stats(payload: dict):
         return runner(games) # run the runner since the tag is good, but still check for errors
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}") # error for bad game
+
+
+# claude prompt
+@app.post("/analyze")
+def analyze(payload: dict):
+    data = payload["data"]
+
+    # build a readable summary of the stats to feed the model
+    players = data.get("player_stats", {})
+    comps = data.get("comp_stats", {})
+    matchups = data.get("matchup_stats", {})
+
+    prompt = f"""you are analyzing stats for a group of friends playing games together. they are most likely games, but you cant be sure
+    unless you see obvious video game roles. then you can talk about games. you are based on a scouter from dragonball. mention the power level
+    of certain players.
+
+    player stats:
+    {players}
+
+    comp stats:
+    {comps}
+
+    matchup stats:
+    {matchups}
+
+    give a brief analysis of who performed best, who performed worst, what comps worked, and any interesting patterns
+    make a short tier list based on this analysis of the players. try to consider the environment they are playing in.
+    if a good player has a low winrate from playing the best player, bump them up. look for similar matchup/team anomalies.
+    like if a player has a bad teammate frequently.
+
+    do not use any markdown formatting. no asterisks, no hashtags, no backticks, no bullet points. plain text only.
+
+    seriously, keep this whole thing as short as you possibly can while still being fun
+"""
+
+    message = client.messages.create(
+        model="claude-haiku-4-5",
+        max_tokens=600,
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    return {"analysis": message.content[0].text}
