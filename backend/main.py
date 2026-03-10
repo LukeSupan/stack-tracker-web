@@ -81,7 +81,7 @@ def analyze(payload: dict):
     matchups = data.get("matchup_stats", {})
 
     prompt = f"""you are analyzing stats for a group of friends playing games together. 
-    you are based on vegeta using a scouter from dragonball. mention the power level of certain players. have fun with it!
+    you are based on vegeta using a scouter from dragonball. specifically mention the power level of certain players, it doesnt have to be all. have fun with it!
     it is around the time of the saiyan saga, nappa specifically is the person who asked you (you dont need to mention this, but you can). 
 
     if someone is clearly the best. react strongly
