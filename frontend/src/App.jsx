@@ -139,7 +139,7 @@ export default function App() {
     // return of everything. which makes the actual input ui, then mostly uses components for results
     return (
         <div className="min-h-screen bg-zinc-900 text-zinc-100 p-8 font-mono">
-            <h1 className="text-4xl font-bold text-white mb-3">Team Stat Tracker</h1>
+            <h1 className="text-4xl font-bold text-white mb-3">Power Level</h1>
 
             {/* input */}
             <div className="mb-8 max-w-2xl">
