@@ -408,7 +408,7 @@ export default function App() {
               </Section>
             )}
 
-            {data.role_comp_stats && data.role_labels(
+            {data.role_comp_stats && data.role_labels && (
               <Section title="Role Comp Stats">
                 <div className="max-w-lg">
                   {sortedRoleComps().map(([comp, stats]) => (
@@ -416,6 +416,7 @@ export default function App() {
                   ))}
                 </div>
               </Section>
+    
             )}
 
             {data.matchup_stats && (
