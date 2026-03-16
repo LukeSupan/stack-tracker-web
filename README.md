@@ -1,11 +1,13 @@
 # Stack Tracker for Web
 
-This is intended to be used socially; if you are hardcore about your specific stats, there are online trackers that do this better.
-This specifically tracks:
+This is intended to be used socially; if you are hardcore about your specific stats, there are other trackers that do individual tracking better.
+This tracks:
 - Individual stats overall and role-based
 - Stats for specific teams
 - Stats for role specific teams
 - Matchups between you and others in games where you play each other (Rocket League or custom Overwatch games)
+
+Then you can have Vegeta analyze the stats, make a tier list, and point out interesting outliers in the data.
 
 ---
 
