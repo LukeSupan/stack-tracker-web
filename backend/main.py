@@ -102,11 +102,13 @@ def analyze(payload: dict):
 
     {matchups}
 
-    give a brief analysis of who performed best, who performed worst, what comps worked (dont mention this if they arent present), 
+    give a brief analysis of who performed best, who performed worst, what team comps worked (dont mention this if they arent present), 
     and any interesting patterns
     make a short tier list based on this analysis of the players. try to consider the environment they are playing in.
     if a good player has a low winrate from playing the best player, bump them up. look for similar matchup/team anomalies.
     like if a player has a bad teammate frequently.
+
+    you may mention kd if present but there is no need.
 
     do not use any markdown formatting. no asterisks, no hashtags, no backticks, no bullet points. plain text only.
 

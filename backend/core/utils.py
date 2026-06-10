@@ -5,28 +5,35 @@ from core.parsing import parse_name_and_tags
 import json
 
 # serialize the keys, which is to get rid of tuples
+
+
 def serialize_key(key):
     if isinstance(key, tuple):
         if isinstance(key[0], tuple):
             # in this case, we got a matchup of teams, each individual team is a tuple we gotta make it a string.
             # like -> (('kayla', 'luke'), ('aiden','bruh')) -> "kayla,luke vs aiden,bruh"
             teams = [",".join(item) for item in key]
-            return " vs ".join(teams) # its now a string that we can easily parse
+            # its now a string that we can easily parse
+            return " vs ".join(teams)
         else:
             # its a simple flat tuple like ('kayla', 'luke', 'mar')
-            return ",".join(key) # join them and make it a string, nice
+            return ",".join(key)  # join them and make it a string, nice
     return str(key)
 
 # serialize, this is to get rid of defaultdicts, and tuples in keys
 # json understand the following:
 # dict, list, str, int, float, bool None.
 # this means no tuples (in our keys), and no defaultdicts, which we are using
+
+
 def serialize(obj):
-    if isinstance(obj, (defaultdict, dict)): # if we've got a default dict or a normal dict, check inside
-        return {serialize_key(key): serialize(value) for key, value in obj.items()} # convert each key in serialize_key, and every value for the key. return a normal dict once done
+    # if we've got a default dict or a normal dict, check inside
+    if isinstance(obj, (defaultdict, dict)):
+        # convert each key in serialize_key, and every value for the key. return a normal dict once done
+        return {serialize_key(key): serialize(value) for key, value in obj.items()}
     else:
-        return obj # return a value once we get something accepted
-    
+        return obj  # return a value once we get something accepted
+
 
 # result is winrate, given wins and games, returns 0 for no games
 def winrate(wins, games):
@@ -35,6 +42,8 @@ def winrate(wins, games):
 # extract a set of all player names from the parsed team dict from parse_game_line
 # tags are cut away here.
 # result is the set of the comp to be updated
+
+
 def extract_players(team):
     players = set()
 
@@ -43,13 +52,14 @@ def extract_players(team):
         for slot in team.values():
             if slot != "none":
                 for names in slot.split(","):
-                    name, _, _ = parse_name_and_tags(names) # we arent using tags here. hence _s
+                    # we arent using tags here. hence _s
+                    name, *_ = parse_name_and_tags(names)
                     players.add(name)
 
     # for games without roles.
     else:
         for name in team:
-            name, _, _ = parse_name_and_tags(name)
+            name, *_ = parse_name_and_tags(name)
             players.add(name)
 
     return players
@@ -57,6 +67,8 @@ def extract_players(team):
 # sort the comps of a certain size by winrate (games if equal)
 # works for both role-based and non role-based comps
 # returns a tuple (winrate, games) for sorting the comps when given a comps stats from dict
+
+
 def comp_sort_key(comp_stats):
     _, stats = comp_stats
     return (
@@ -64,6 +76,8 @@ def comp_sort_key(comp_stats):
         stats["games"]
     )
 # sort by games played (desc), then by team1 winrate
+
+
 def matchup_sort_key(matchup_stats):
     matchup, stats = matchup_stats
 
@@ -82,6 +96,8 @@ def matchup_sort_key(matchup_stats):
 # generate a string as a key for a role-based comp
 # gets rid of MVP, sorts alphabetically per role, then joins the roles with a /. making a final string key
 # returns a generated string as a key
+
+
 def get_role_comp_key(team, role_labels):
     players = []  # players like non role comps, but as a list. so order matters
 
@@ -94,13 +110,12 @@ def get_role_comp_key(team, role_labels):
             players.append("")  # this role is empty nothing else to do here
             continue
 
-
         # before adding them to the key we need to get rid of tags,
         # otherwise we get duplicate comps, its also ugly.
         clean_names = []
 
         for raw in slot.split(","):
-            name = parse_name_and_tags(raw)[0] # get only the name
+            name = parse_name_and_tags(raw)[0]  # get only the name
             clean_names.append(name)
 
         sorted_players = sorted(clean_names)
@@ -115,6 +130,8 @@ def get_role_comp_key(team, role_labels):
 # count the number of unique players in current role-based comp key
 # cant just do length like with non role because the string is formatted (with /s and ,s)
 # returns the size of the team comp
+
+
 def role_comp_team_size(role_comp_key):
     slots = role_comp_key.split("/")
     players = set()
@@ -125,5 +142,7 @@ def role_comp_team_size(role_comp_key):
                 players.add(name)
     return len(players)
 
+
 def print_logs(player_stats):
-    print(f"Players: {list(player_stats.keys())}", flush=True) # force printing for logs
+    print(f"Players: {list(player_stats.keys())}",
+          flush=True)  # force printing for logs

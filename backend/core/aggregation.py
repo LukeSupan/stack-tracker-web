@@ -14,7 +14,7 @@ def update_player_stats(player_stats, team, result):
 
         # in this slot, split to get each player for this role
         for raw in names.split(","):
-            name, is_mvp, is_key = parse_name_and_tags(raw) # remove tags from name but remember if they were there
+            name, is_mvp, is_key, kills, deaths = parse_name_and_tags(raw) # remove tags from name but remember if they were there
 
             player_stats[name]["games"] += 1
 
@@ -35,6 +35,11 @@ def update_player_stats(player_stats, team, result):
                 player_stats[name]["mvplosses"] += is_mvp # add 1 if true, 0 if false to mvplosses
                 player_stats[name]["keylosses"] += is_key # add 1 if true, 0 if false to keylosses
 
+            # track kd if present in this game line
+            if kills is not None:
+                player_stats[name]["kills"] += kills
+                player_stats[name]["deaths"] += deaths
+
     return
 
 # update the game values for each player on current team (without roles)
@@ -42,7 +47,7 @@ def update_player_stats(player_stats, team, result):
 def update_player_stats_generic(player_stats, team, result):
     # no need for splitting, team is a list that was pre split
     for raw in team:
-        name, is_mvp, is_key = parse_name_and_tags(raw) # remove tags from name but remember if they were there
+        name, is_mvp, is_key, kills, deaths = parse_name_and_tags(raw) # remove tags from name but remember if they were there
 
         player_stats[name]["games"] += 1
 
@@ -59,6 +64,11 @@ def update_player_stats_generic(player_stats, team, result):
             player_stats[name]["losses"] += 1
             player_stats[name]["mvplosses"] += is_mvp # add 1 if true, 0 if false to mvplosses
             player_stats[name]["keylosses"] += is_key # add 1 if true, 0 if false to keylosses
+
+        # track kd if present in this game line
+        if kills is not None:
+            player_stats[name]["kills"] += kills
+            player_stats[name]["deaths"] += deaths
 
 
 
@@ -118,4 +128,3 @@ def update_matchup_stats(matchup_stats, teams_list, results_list):
             matchup_stats[matchup_key]["wins"][comp_key] = 0
         if result.lower() == "win":
             matchup_stats[matchup_key]["wins"][comp_key] += 1
-
