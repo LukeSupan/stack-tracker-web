@@ -26,7 +26,8 @@ function calcKD(kills, deaths) {
 
 function kdColor(ratio) {
   const val = parseFloat(ratio);
-  if (val >= 2.0) return "text-emerald-400";
+  if (val >= 1.5) return "text-sky-400";
+  if (val >= 1.2) return "text-emerald-400";
   if (val >= 1.0) return "text-yellow-400";
   return "text-red-400";
 }
@@ -213,9 +214,10 @@ FORMATTING RULES
   [kills-deaths]     optional K/D for a player, e.g. luke[5-3]
   none               fills empty role slots (randoms)
 
-K/D can be mixed freely — add it to any or all players, in any
+K/D can be mixed freely. You can add it to any or all players, in any
 game type. Players without brackets are simply not counted in KD.
-If only some games have KD, a "KD Games" count is shown.
+If only some games have KD, the ones that don't are just ignored.
+Essentially acting as an average KD game.
 
 One game per line. Each line ends with win or loss.
 
