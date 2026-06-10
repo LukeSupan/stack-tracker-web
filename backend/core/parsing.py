@@ -1,19 +1,38 @@
 # parse input format into easily usable format
 
-# parse mvp and key tags out of name
-# result is the name minus (mvp) or (key) if present and true (for removal) or false (for no need) for each.
-# first boolean is mvp, second is key
+import re
+
+# parse mvp, key tags, and optional [kills-deaths] bracket out of name
+# result is (name, is_mvp, is_key, kills, deaths)
+# kills and deaths are None if no bracket was present
+# supports: luke[5-3], luke[5-3](mvp), luke(mvp)[5-3]
+
+
 def parse_name_and_tags(name):
     name = name.strip()
+    kills = None
+    deaths = None
+
+    # extract [kills-deaths] bracket if present
+    kd_match = re.search(r'\[(\d+)-(\d+)\]', name)
+    if kd_match:
+        kills = int(kd_match.group(1))
+        deaths = int(kd_match.group(2))
+        name = (name[:kd_match.start()] + name[kd_match.end():]).strip()
+
+    # extract (mvp) or (key) tag
     if name.endswith("(mvp)"):
-        return name.replace("(mvp)", ""), True, False
+        return name[:-5].strip(), True, False, kills, deaths
     elif name.endswith("(key)"):
-        return name.replace("(key)", ""), False, True
-    return name, False, False
+        return name[:-5].strip(), False, True, kills, deaths
+
+    return name, False, False, kills, deaths
 
 # parse each role out of the line, individual players are not parsed out yet
 # result is dictionary of the game, showing the roles, and then a result win or loss
 # at this point role1 - role3 could still be something like: luke,mar(mvp).
+
+
 def parse_game_line_roles(line, role_labels):
     parts = line.strip().split("/")
 
@@ -25,7 +44,7 @@ def parse_game_line_roles(line, role_labels):
             f"Bad input: {line}\n"
             f"Check the formatting for that line."
         )
-    
+
     *role_parts, result = parts
 
     # maybe add a catch here at some point TODO
@@ -34,11 +53,13 @@ def parse_game_line_roles(line, role_labels):
     # result is like: left: bob | mid: alice | right: aiden
     team = dict(zip(role_labels, role_parts))
 
-    return team, result # return 2-tuple with the dictionary and result
+    return team, result  # return 2-tuple with the dictionary and result
 
 # parse each player out of the line, individual players are also parsed out
 # result is a list of the members, and then a result win or loss
 # at this point the players still have their tags
+
+
 def parse_game_line_generic(line):
     players_part, result = line.strip().split("/")
 

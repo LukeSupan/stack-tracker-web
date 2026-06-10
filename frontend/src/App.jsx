@@ -1,57 +1,94 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000"
+const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 function calcWinrate(wins, games) {
-  if (games === 0) return "0.0%"
-  return (wins / games * 100).toFixed(1) + "%"
+  if (games === 0) return "0.0%";
+  return ((wins / games) * 100).toFixed(1) + "%";
 }
 
 function winrateVal(wins, games) {
-  if (games === 0) return 0
-  return wins / games * 100
+  if (games === 0) return 0;
+  return (wins / games) * 100;
 }
 
 function winrateColor(winrate) {
-  const val = parseFloat(winrate)
-  if (val >= 60) return "text-emerald-400"
-  if (val >= 45) return "text-yellow-400"
-  return "text-red-400"
+  const val = parseFloat(winrate);
+  if (val >= 60) return "text-emerald-400";
+  if (val >= 45) return "text-yellow-400";
+  return "text-red-400";
+}
+
+function calcKD(kills, deaths) {
+  if (deaths === 0) return kills > 0 ? `${kills}.0` : "0.0";
+  return (kills / deaths).toFixed(2);
+}
+
+function kdColor(ratio) {
+  const val = parseFloat(ratio);
+  if (val >= 2.0) return "text-emerald-400";
+  if (val >= 1.0) return "text-yellow-400";
+  return "text-red-400";
 }
 
 function StatRow({ label, value, highlight }) {
   return (
     <div className="flex justify-between py-0.5 text-sm">
       <span className="text-zinc-100">{label}</span>
-      <span className={highlight ? "text-amber-400 font-semibold" : "text-zinc-100"}>{value}</span>
+      <span
+        className={highlight ? "text-amber-400 font-semibold" : "text-zinc-100"}
+      >
+        {value}
+      </span>
     </div>
-  )
+  );
 }
 
 function PlayerCard({ name, player }) {
-  const roleKeys = Object.keys(player.roles)
-  const showRoles = !(roleKeys.length === 1 && roleKeys[0] === "Player")
-  const winrate = calcWinrate(player.wins, player.games)
-  const mvpRate = calcWinrate(player.mvps, player.games)
-  const keyRate = calcWinrate(player.keys, player.games)
+  const roleKeys = Object.keys(player.roles);
+  const showRoles = !(roleKeys.length === 1 && roleKeys[0] === "Player");
+  const winrate = calcWinrate(player.wins, player.games);
+  const mvpRate = calcWinrate(player.mvps, player.games);
+  const keyRate = calcWinrate(player.keys, player.games);
+  const kdRatio = calcKD(player.kills, player.deaths);
 
   return (
     <div className="border border-zinc-500 p-4 w-52 bg-zinc-700">
       <div className="flex justify-between mb-2 pb-2 border-b border-zinc-500">
         <span className="font-bold text-white text-base">{name}</span>
-        <span className={`text-sm font-semibold ${winrateColor(winrate)}`}>{winrate}</span>
+        <span className={`text-sm font-semibold ${winrateColor(winrate)}`}>
+          {winrate}
+        </span>
       </div>
-      {showRoles && roleKeys.map(role => (
-        <StatRow key={role} label={role} value={`${player.roles[role].wins}W / ${player.roles[role].losses}L`} />
-      ))}
+      {showRoles &&
+        roleKeys.map((role) => (
+          <StatRow
+            key={role}
+            label={role}
+            value={`${player.roles[role].wins}W / ${player.roles[role].losses}L`}
+          />
+        ))}
       <StatRow label="Overall" value={`${player.wins}W / ${player.losses}L`} />
       <StatRow label="Games" value={player.games} />
+      {(player.kills > 0 || player.deaths > 0) && (
+        <>
+          <div className="border-t border-zinc-600 my-2" />
+          <StatRow label="K / D" value={`${player.kills} / ${player.deaths}`} />
+          <StatRow
+            label="Ratio"
+            value={<span className={kdColor(kdRatio)}>{kdRatio}</span>}
+          />
+        </>
+      )}
       {player.mvps > 0 && (
         <>
           <div className="border-t border-zinc-600 my-2" />
           <StatRow label="MVPs" value={player.mvps} highlight />
           <StatRow label="MVP Rate" value={mvpRate} />
-          <StatRow label="MVP W/L" value={`${player.mvpwins}W / ${player.mvplosses}L`} />
+          <StatRow
+            label="MVP W/L"
+            value={`${player.mvpwins}W / ${player.mvplosses}L`}
+          />
         </>
       )}
       {player.keys > 0 && (
@@ -59,29 +96,34 @@ function PlayerCard({ name, player }) {
           <div className="border-t border-zinc-600 my-2" />
           <StatRow label="Keys" value={player.keys} highlight />
           <StatRow label="Key Rate" value={keyRate} />
-          <StatRow label="Key W/L" value={`${player.keywins}W / ${player.keylosses}L`} />
+          <StatRow
+            label="Key W/L"
+            value={`${player.keywins}W / ${player.keylosses}L`}
+          />
         </>
       )}
     </div>
-  )
+  );
 }
 
 function CompRow({ name, stats }) {
-  const winrate = calcWinrate(stats.wins, stats.games)
+  const winrate = calcWinrate(stats.wins, stats.games);
   return (
     <div className="flex justify-between py-2 text-sm border-b border-zinc-600 last:border-0">
       <span className="text-zinc-100">{name.replaceAll(",", ", ")}</span>
       <span className="ml-4 shrink-0">
-        <span className={`font-semibold ${winrateColor(winrate)}`}>{winrate}</span>
+        <span className={`font-semibold ${winrateColor(winrate)}`}>
+          {winrate}
+        </span>
         <span className="text-zinc-400 ml-2">({stats.games} games)</span>
       </span>
     </div>
-  )
+  );
 }
 
 function RoleCompRow({ name, stats, roleLabels }) {
-  const winrate = calcWinrate(stats.wins, stats.games)
-  const parts = name.split("/")
+  const winrate = calcWinrate(stats.wins, stats.games);
+  const parts = name.split("/");
   return (
     <div className="py-2 text-sm border-b border-zinc-600 last:border-0">
       <div className="flex justify-between">
@@ -94,38 +136,48 @@ function RoleCompRow({ name, stats, roleLabels }) {
           ))}
         </div>
         <span className="ml-4 shrink-0 mt-0.5">
-          <span className={`font-semibold ${winrateColor(winrate)}`}>{winrate}</span>
+          <span className={`font-semibold ${winrateColor(winrate)}`}>
+            {winrate}
+          </span>
           <span className="text-zinc-400 ml-2">({stats.games} games)</span>
         </span>
       </div>
     </div>
-  )
+  );
 }
 
 function MatchupRow({ matchup, data }) {
-  const teams = matchup.split(" vs ").map(t => t.replaceAll(",", ", "))
+  const teams = matchup.split(" vs ").map((t) => t.replaceAll(",", ", "));
   return (
     <div className="py-2 text-sm border-b border-zinc-600 last:border-0">
       <div className="flex justify-between">
         <div>
-          <div className="text-zinc-100 mb-1">{teams[0]} <span className="text-zinc-400">vs</span> {teams[1]}</div>
+          <div className="text-zinc-100 mb-1">
+            {teams[0]} <span className="text-zinc-400">vs</span> {teams[1]}
+          </div>
           {Object.entries(data.wins).map(([team, wins]) => (
-            <div key={team} className="text-zinc-100">{team.replaceAll(",", ", ")}: {wins}W</div>
+            <div key={team} className="text-zinc-100">
+              {team.replaceAll(",", ", ")}: {wins}W
+            </div>
           ))}
         </div>
-        <span className="text-zinc-400 ml-4 shrink-0">({data.games} games)</span>
+        <span className="text-zinc-400 ml-4 shrink-0">
+          ({data.games} games)
+        </span>
       </div>
     </div>
-  )
+  );
 }
 
 function Section({ title, children }) {
   return (
     <div className="mb-12">
-      <h2 className="text-amber-400 text-base font-black uppercase mb-4">{title}</h2>
+      <h2 className="text-amber-400 text-base font-black uppercase mb-4">
+        {title}
+      </h2>
       {children}
     </div>
-  )
+  );
 }
 
 const HOW_TO_USE = `STACK TRACKER FOR WEB
@@ -158,7 +210,12 @@ FORMATTING RULES
   commas ( , )       separate multiple players in a role
   slashes ( / )      separate different roles
   (mvp) and (key)    tags applied to one player per game
+  [kills-deaths]     optional K/D for a player, e.g. luke[5-3]
   none               fills empty role slots (randoms)
+
+K/D can be mixed freely — add it to any or all players, in any
+game type. Players without brackets are simply not counted in KD.
+If only some games have KD, a "KD Games" count is shown.
 
 One game per line. Each line ends with win or loss.
 
@@ -175,150 +232,262 @@ FULL EXAMPLE (copy paste to try it)
   luke,aiden,jr(mvp)/alex(key)/loss
   none/mar,kayla(key)/win
   luke,mar/none/win
-  luke,mar/aiden,ray,kayla,dalton/win`
+  luke,mar/aiden,ray,kayla,dalton/win`;
 
 function HowToUseModal({ onClose }) {
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-zinc-700 border border-zinc-500 max-w-2xl w-full flex flex-col" style={{maxHeight:"90vh"}} onClick={e => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-zinc-700 border border-zinc-500 max-w-2xl w-full flex flex-col"
+        style={{ maxHeight: "90vh" }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex justify-between items-center p-6 pb-4 border-b border-zinc-500 shrink-0">
-          <span className="text-amber-400 text-base font-black uppercase tracking-widest">How to Use</span>
-          <button onClick={onClose} className="text-zinc-100 hover:text-white text-2xl leading-none">×</button>
+          <span className="text-amber-400 text-base font-black uppercase tracking-widest">
+            How to Use
+          </span>
+          <button
+            onClick={onClose}
+            className="text-zinc-100 hover:text-white text-2xl leading-none"
+          >
+            ×
+          </button>
         </div>
         <div className="overflow-y-auto p-6 pt-4">
-          <pre className="text-zinc-100 text-sm leading-relaxed whitespace-pre-wrap font-mono">{HOW_TO_USE}</pre>
+          <pre className="text-zinc-100 text-sm leading-relaxed whitespace-pre-wrap font-mono">
+            {HOW_TO_USE}
+          </pre>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-
 export default function App() {
-  const [mode, setMode] = useState("paste")
-  const [data, setData] = useState(null)
-  const [error, setError] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [showHelp, setShowHelp] = useState(false)
-  const [analysis, setAnalysis] = useState(null)
-  const [analysisLoading, setAnalysisLoading] = useState(false)
+  const [mode, setMode] = useState("paste");
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [analysis, setAnalysis] = useState(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
 
-  const [pasteInput, setPasteInput] = useState(() => localStorage.getItem("pasteInput") || "")
-  const [gameTag, setGameTag] = useState(() => localStorage.getItem("gameTag") || "")
-  const [games, setGames] = useState(() => {
-    const saved = localStorage.getItem("games")
-    return saved ? JSON.parse(saved) : []
-  })
-  const [currentLine, setCurrentLine] = useState("")
-
-  useEffect(() => { localStorage.setItem("pasteInput", pasteInput) }, [pasteInput])
-  useEffect(() => { localStorage.setItem("gameTag", gameTag) }, [gameTag])
-  useEffect(() => { localStorage.setItem("games", JSON.stringify(games)) }, [games])
+  // sidebar resize
+  const [sidebarWidth, setSidebarWidth] = useState(320);
+  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 1024);
+  const isResizingRef = useRef(false);
 
   useEffect(() => {
-    function onKey(e) { if (e.key === "Escape") setShowHelp(false) }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [])
+    const check = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
-  function easyToLines() { return [gameTag.trim(), ...games] }
-  function pasteToLines() { return pasteInput.split("\n").map(l => l.trim()).filter(l => l) }
+  useEffect(() => {
+    function onMouseMove(e) {
+      if (!isResizingRef.current) return;
+      setSidebarWidth(Math.min(Math.max(e.clientX, 240), 640));
+    }
+    function onMouseUp() {
+      isResizingRef.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    }
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+  }, []);
+
+  function startResize(e) {
+    isResizingRef.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    e.preventDefault();
+  }
+
+  const [pasteInput, setPasteInput] = useState(
+    () => localStorage.getItem("pasteInput") || "",
+  );
+  const [gameTag, setGameTag] = useState(
+    () => localStorage.getItem("gameTag") || "",
+  );
+  const [games, setGames] = useState(() => {
+    const saved = localStorage.getItem("games");
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [currentLine, setCurrentLine] = useState("");
+
+  useEffect(() => {
+    localStorage.setItem("pasteInput", pasteInput);
+  }, [pasteInput]);
+  useEffect(() => {
+    localStorage.setItem("gameTag", gameTag);
+  }, [gameTag]);
+  useEffect(() => {
+    localStorage.setItem("games", JSON.stringify(games));
+  }, [games]);
+
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === "Escape") setShowHelp(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  function easyToLines() {
+    return [gameTag.trim(), ...games];
+  }
+  function pasteToLines() {
+    return pasteInput
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l);
+  }
   function switchToPaste() {
-    if (gameTag.trim() || games.length > 0) setPasteInput([gameTag.trim(), ...games].join("\n"))
-    setMode("paste")
+    if (gameTag.trim() || games.length > 0)
+      setPasteInput([gameTag.trim(), ...games].join("\n"));
+    setMode("paste");
   }
   function switchToEasy() {
-    const lines = pasteInput.split("\n").map(l => l.trim()).filter(l => l)
-    if (lines.length > 0) { setGameTag(lines[0]); setGames(lines.slice(1)) }
-    setMode("easy")
+    const lines = pasteInput
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l);
+    if (lines.length > 0) {
+      setGameTag(lines[0]);
+      setGames(lines.slice(1));
+    }
+    setMode("easy");
   }
-  function toggleMode() { mode === "paste" ? switchToEasy() : switchToPaste() }
+  function toggleMode() {
+    mode === "paste" ? switchToEasy() : switchToPaste();
+  }
   function addGame() {
-    if (!currentLine.trim()) return
-    setGames(prev => [...prev, currentLine.trim()])
-    setCurrentLine("")
+    if (!currentLine.trim()) return;
+    setGames((prev) => [...prev, currentLine.trim()]);
+    setCurrentLine("");
   }
-  function handleKeyDown(e) { if (e.key === "Enter") { e.preventDefault(); addGame() } }
+  function handleKeyDown(e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addGame();
+    }
+  }
 
   async function submitData() {
-    const lines = mode === "paste" ? pasteToLines() : easyToLines()
-    setLoading(true)
-    setError(null)
-    setAnalysis(null)
+    const lines = mode === "paste" ? pasteToLines() : easyToLines();
+    setLoading(true);
+    setError(null);
+    setAnalysis(null);
     try {
       const res = await fetch(`${API_URL}/stats`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lines })
-      })
+        body: JSON.stringify({ lines }),
+      });
       if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.detail || "Something went wrong")
+        const err = await res.json();
+        throw new Error(err.detail || "Something went wrong");
       }
-      setData(await res.json())
+      setData(await res.json());
     } catch (e) {
-      setError(e.message)
+      setError(e.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   async function runScouter() {
-    setAnalysisLoading(true)
-    setAnalysis(null)
+    setAnalysisLoading(true);
+    setAnalysis(null);
     try {
       const res = await fetch(`${API_URL}/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data })
-      })
-      if (!res.ok) throw new Error("Scouter failed")
-      const json = await res.json()
-      setAnalysis(json.analysis)
+        body: JSON.stringify({ data }),
+      });
+      if (!res.ok) throw new Error("Scouter failed");
+      const json = await res.json();
+      setAnalysis(json.analysis);
+    // eslint-disable-next-line no-unused-vars
     } catch (e) {
-      setAnalysis("Scouter failed.")
+      setAnalysis("Scouter failed.");
     } finally {
-      setAnalysisLoading(false)
+      setAnalysisLoading(false);
     }
   }
 
-  const gameCount = mode === "paste" ? Math.max(0, pasteToLines().length - 1) : games.length
+  const gameCount =
+    mode === "paste" ? Math.max(0, pasteToLines().length - 1) : games.length;
 
   function sortedPlayers() {
-    if (!data) return []
-    return Object.entries(data.player_stats).sort(([, a], [, b]) => winrateVal(b.wins, b.games) - winrateVal(a.wins, a.games))
+    if (!data) return [];
+    return Object.entries(data.player_stats).sort(
+      ([, a], [, b]) =>
+        winrateVal(b.wins, b.games) - winrateVal(a.wins, a.games),
+    );
   }
   function sortedComps() {
-    if (!data?.comp_stats) return []
-    return Object.entries(data.comp_stats).sort(([, a], [, b]) => winrateVal(b.wins, b.games) - winrateVal(a.wins, a.games))
+    if (!data?.comp_stats) return [];
+    return Object.entries(data.comp_stats).sort(
+      ([, a], [, b]) =>
+        winrateVal(b.wins, b.games) - winrateVal(a.wins, a.games),
+    );
   }
   function sortedRoleComps() {
-    if (!data?.role_comp_stats) return []
-    return Object.entries(data.role_comp_stats).sort(([, a], [, b]) => winrateVal(b.wins, b.games) - winrateVal(a.wins, a.games))
+    if (!data?.role_comp_stats) return [];
+    return Object.entries(data.role_comp_stats).sort(
+      ([, a], [, b]) =>
+        winrateVal(b.wins, b.games) - winrateVal(a.wins, a.games),
+    );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-800 text-zinc-100" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+    <div
+      className="min-h-screen bg-zinc-800 text-zinc-100"
+      style={{ fontFamily: "'IBM Plex Mono', monospace" }}
+    >
       {showHelp && <HowToUseModal onClose={() => setShowHelp(false)} />}
 
       {/* desktop: two column. mobile: single column stacked */}
       <div className="flex flex-col lg:flex-row min-h-screen">
-
-        {/* Input panel — full width on mobile, fixed sidebar on desktop */}
-        <div className="w-full lg:w-80 lg:shrink-0 lg:border-r lg:border-zinc-600 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto p-6 lg:p-8">
+        {/* Input panel — full width on mobile, resizable sidebar on desktop */}
+        <div
+          className="w-full lg:shrink-0 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto p-6 lg:p-8"
+          style={isDesktop ? { width: sidebarWidth } : undefined}
+        >
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-xl font-bold text-white tracking-tight">Power Level</h1>
-            <button onClick={() => setShowHelp(true)} className="text-zinc-400 hover:text-amber-400 text-xs underline transition-colors">
+            <h1 className="text-xl font-bold text-white tracking-tight">
+              Power Level
+            </h1>
+            <button
+              onClick={() => setShowHelp(true)}
+              className="text-zinc-400 hover:text-amber-400 text-xs underline transition-colors"
+            >
               How to use
             </button>
           </div>
 
           <div>
             <div className="flex gap-2 mb-3 items-center">
-              <button onClick={toggleMode} className="px-3 py-1 text-xs bg-zinc-600 hover:bg-zinc-500 text-zinc-400">
+              <button
+                onClick={toggleMode}
+                className="px-3 py-1 text-xs bg-zinc-600 hover:bg-zinc-500 text-zinc-400"
+              >
                 {mode === "paste" ? "→ Easy Input" : "→ Copy Paste"}
               </button>
-              {gameCount > 0 && <span className="text-zinc-400 text-xs">{gameCount} game{gameCount !== 1 ? "s" : ""}</span>}
+              {gameCount > 0 && (
+                <span className="text-zinc-400 text-xs">
+                  {gameCount} game{gameCount !== 1 ? "s" : ""}
+                </span>
+              )}
             </div>
 
             {mode === "paste" ? (
@@ -327,7 +496,7 @@ export default function App() {
                 rows={11}
                 placeholder="Paste your game data here..."
                 value={pasteInput}
-                onChange={e => setPasteInput(e.target.value)}
+                onChange={(e) => setPasteInput(e.target.value)}
               />
             ) : (
               <div className="border border-zinc-500 p-3 bg-zinc-700">
@@ -335,12 +504,17 @@ export default function App() {
                   className="w-full bg-zinc-600 border border-zinc-500 text-zinc-200 text-xs p-2 mb-3 focus:outline-none focus:border-amber-400/40"
                   placeholder="Game tag (e.g. one_vs_one)"
                   value={gameTag}
-                  onChange={e => setGameTag(e.target.value)}
+                  onChange={(e) => setGameTag(e.target.value)}
                 />
                 {games.length > 0 && (
                   <div className="mb-3 max-h-40 overflow-y-auto">
                     {games.map((game, i) => (
-                      <div key={i} className="text-zinc-400 text-xs py-0.5 border-b border-zinc-600 last:border-0">{game}</div>
+                      <div
+                        key={i}
+                        className="text-zinc-400 text-xs py-0.5 border-b border-zinc-600 last:border-0"
+                      >
+                        {game}
+                      </div>
                     ))}
                   </div>
                 )}
@@ -349,10 +523,15 @@ export default function App() {
                     className="flex-1 bg-zinc-600 border border-zinc-500 text-zinc-200 text-xs p-2 focus:outline-none focus:border-amber-400/40"
                     placeholder="Add a game line..."
                     value={currentLine}
-                    onChange={e => setCurrentLine(e.target.value)}
+                    onChange={(e) => setCurrentLine(e.target.value)}
                     onKeyDown={handleKeyDown}
                   />
-                  <button onClick={addGame} className="px-3 py-2 bg-zinc-700 hover:bg-zinc-600 text-white text-xs">Add</button>
+                  <button
+                    onClick={addGame}
+                    className="px-3 py-2 bg-zinc-700 hover:bg-zinc-600 text-white text-xs"
+                  >
+                    Add
+                  </button>
                 </div>
               </div>
             )}
@@ -368,14 +547,21 @@ export default function App() {
           </div>
         </div>
 
+        {/* Resize handle — desktop only */}
+        <div
+          onMouseDown={startResize}
+          className="hidden lg:block w-1 shrink-0 bg-zinc-600 hover:bg-amber-400/60 transition-colors cursor-col-resize"
+        />
+
         {/* Results panel */}
         {data && (
-          <div className="flex-1 p-6 lg:p-10 border-t border-zinc-600 lg:border-t-0">
-
+          <div className="flex-1 p-6 lg:p-10 border-t border-zinc-600 lg:border-t-0 min-w-0">
             <Section title="SCOUTER ANALYSIS">
               <div className="max-w-2xl border border-zinc-500 p-4 bg-zinc-700">
                 <div className="flex justify-between items-center mb-3">
-                  <span className="text-zinc-100 text-xs uppercase tracking-widest">Scouter</span>
+                  <span className="text-zinc-100 text-xs uppercase tracking-widest">
+                    Scouter
+                  </span>
                   <button
                     onClick={runScouter}
                     disabled={analysisLoading}
@@ -385,9 +571,13 @@ export default function App() {
                   </button>
                 </div>
                 {analysis ? (
-                  <p className="text-zinc-100 text-sm leading-relaxed whitespace-pre-line">{analysis}</p>
+                  <p className="text-zinc-100 text-sm leading-relaxed whitespace-pre-line">
+                    {analysis}
+                  </p>
                 ) : (
-                  <p className="text-zinc-400 text-xs">Vegeta! What does the scouter say about his power level?</p>
+                  <p className="text-zinc-400 text-xs">
+                    Vegeta! What does the scouter say about his power level?
+                  </p>
                 )}
               </div>
             </Section>
@@ -414,11 +604,15 @@ export default function App() {
               <Section title="Role Comp Stats">
                 <div className="max-w-lg">
                   {sortedRoleComps().map(([comp, stats]) => (
-                    <RoleCompRow key={comp} name={comp} stats={stats} roleLabels={data.role_labels} />
+                    <RoleCompRow
+                      key={comp}
+                      name={comp}
+                      stats={stats}
+                      roleLabels={data.role_labels}
+                    />
                   ))}
                 </div>
               </Section>
-    
             )}
 
             {data.matchup_stats && (
@@ -434,5 +628,5 @@ export default function App() {
         )}
       </div>
     </div>
-  )
+  );
 }

@@ -19,6 +19,7 @@ def make_player(role_labels):
             for role in role_labels
         },
 
+
         # tags stats
         "mvps": 0,
         "mvpwins": 0,
@@ -26,7 +27,10 @@ def make_player(role_labels):
 
         "keys": 0,
         "keywins": 0,
-        "keylosses": 0
+        "keylosses": 0,
+
+        "kills": 0,
+        "deaths": 0,
     }
 
 

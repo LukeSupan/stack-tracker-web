@@ -6,6 +6,7 @@ from core.utils import serialize, print_logs
 
 from core.config import GAME_CONFIGS
 
+# todo add kd with brackets system
 def run(games):
 
     role_labels = GAME_CONFIGS["generic"]
