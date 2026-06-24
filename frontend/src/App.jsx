@@ -256,6 +256,7 @@ export default function App() {
 
   async function submitData() {
     const lines = mode === "paste" ? pasteToLines() : easyToLines();
+    const submittedContent = currentContent();
     setLoading(true);
     setError(null);
     setAnalysis(null);
@@ -270,6 +271,7 @@ export default function App() {
         throw new Error(err.detail || "Something went wrong");
       }
       setData(await res.json());
+      await autoUpdateActiveSaveContent(submittedContent);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -354,6 +356,31 @@ export default function App() {
   async function signOut() {
     if (!supabase) return;
     await supabase.auth.signOut();
+  }
+
+  async function autoUpdateActiveSaveContent(content) {
+    if (!supabase || !session || !activeSaveId || !content) return;
+
+    setSavesError("");
+    setSaveMessage("");
+
+    try {
+      const { data: updatedSave, error: updateError } = await supabase
+        .from("saves")
+        .update({ content })
+        .eq("id", activeSaveId)
+        .select("id,name,content,created_at,updated_at")
+        .single();
+
+      if (updateError) throw updateError;
+      setSaves((previousSaves) => [
+        updatedSave,
+        ...previousSaves.filter((save) => save.id !== updatedSave.id),
+      ]);
+      setSaveMessage("Save auto-updated.");
+    } catch (errorObject) {
+      setSavesError(`Stats submitted, but autosave failed: ${errorObject.message}`);
+    }
   }
 
   async function writeSave({ forceNew = false } = {}) {
