@@ -1,3 +1,11 @@
+from games.one_vs_one import run as run_one_vs_one
+from games.hero_shooter_versus import run as run_hero_shooter_versus
+from games.lanes_detailed import run as run_lanes_detailed
+from games.moba import run as run_moba
+from games.generic_versus import run as run_generic_versus
+from games.generic import run as run_generic
+from games.lanes import run as run_lanes
+from games.hero_shooter import run as run_hero_shooter
 import anthropic
 import json
 import os
@@ -5,13 +13,13 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from fastapi import Depends, Header, HTTPException, FastAPI
-from fastapi.middleware.cors import CORSMiddleware # cors is needed for frontend
+from fastapi.middleware.cors import CORSMiddleware  # cors is needed for frontend
 
 # used locally
 from dotenv import load_dotenv
 load_dotenv()
 
-app = FastAPI() # create FastAPI app
+app = FastAPI()  # create FastAPI app
 
 client = anthropic.Anthropic()  # reads api key
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
@@ -34,14 +42,6 @@ app.add_middleware(
 )
 
 # import game runners
-from games.hero_shooter import run as run_hero_shooter
-from games.lanes import run as run_lanes
-from games.generic import run as run_generic
-from games.generic_versus import run as run_generic_versus
-from games.moba import run as run_moba
-from games.lanes_detailed import run as run_lanes_detailed
-from games.hero_shooter_versus import run as run_hero_shooter_versus
-from games.one_vs_one import run as run_one_vs_one
 
 
 # from games.deadlock import run as run_deadlock # could include other games with 3 lanes TODO
@@ -105,11 +105,15 @@ def get_stats(payload: dict):
     runner = GAME_RUNNERS.get(game_name)
 
     if not runner:
-        raise HTTPException(status_code=400, detail=f"{game_name} is not an accepted flag") # error for bad flag
+        # error for bad flag
+        raise HTTPException(
+            status_code=400, detail=f"{game_name} is not an accepted flag")
     try:
-        return runner(games) # run the runner since the tag is good, but still check for errors
+        # run the runner since the tag is good, but still check for errors
+        return runner(games)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}") # error for bad game
+        # error for bad game
+        raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
 
 
 # claude prompt
