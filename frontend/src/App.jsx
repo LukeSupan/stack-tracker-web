@@ -11,6 +11,7 @@ import {
   Section,
 } from "./components/statDisplay";
 import {
+  averagePlayerKD,
   filterStatsByGames,
   minGamesValue,
   readMinGamesSetting,
@@ -546,6 +547,7 @@ export default function App() {
   const visiblePlayers = sortedPlayers();
   const visibleComps = sortedComps();
   const visibleRoleComps = sortedRoleComps();
+  const visiblePlayerKDAverage = averagePlayerKD(visiblePlayers);
 
   return (
     <div
@@ -747,7 +749,12 @@ export default function App() {
               <div className="flex flex-wrap gap-3">
                 {visiblePlayers.length > 0 ? (
                   visiblePlayers.map(([name, player]) => (
-                    <PlayerCard key={name} name={name} player={player} />
+                    <PlayerCard
+                      key={name}
+                      name={name}
+                      player={player}
+                      kdAverage={visiblePlayerKDAverage}
+                    />
                   ))
                 ) : (
                   <p className="text-zinc-400 text-sm">

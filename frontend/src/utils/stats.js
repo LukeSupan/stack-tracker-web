@@ -21,12 +21,27 @@ export function calcKD(kills, deaths) {
   return (kills / deaths).toFixed(2);
 }
 
-export function kdColor(ratio) {
+export function kdColor(ratio, averageRatio = 1) {
   const val = parseFloat(ratio);
-  if (val >= 1.65) return "text-sky-400";
-  if (val >= 1.2) return "text-emerald-400";
-  if (val >= 0.9) return "text-yellow-400";
+  const average = Math.max(Number.parseFloat(averageRatio) || 1, 0.1);
+  if (val >= average * 1.35) return "text-sky-400";
+  if (val >= average * 1.1) return "text-emerald-400";
+  if (val >= average * 0.85) return "text-yellow-400";
   return "text-red-400";
+}
+
+export function averagePlayerKD(players) {
+  const ratios = players
+    .map(([, player]) => {
+      if (!player || (player.kills || 0) === 0 || (player.deaths || 0) === 0) {
+        return null;
+      }
+      return player.kills / player.deaths;
+    })
+    .filter((ratio) => ratio !== null);
+
+  if (ratios.length === 0) return 1;
+  return ratios.reduce((total, ratio) => total + ratio, 0) / ratios.length;
 }
 
 export function readMinGamesSetting(key) {

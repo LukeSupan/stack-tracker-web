@@ -18,7 +18,7 @@ function StatRow({ label, value, highlight }) {
   );
 }
 
-export function PlayerCard({ name, player }) {
+export function PlayerCard({ name, player, kdAverage }) {
   const roleKeys = Object.keys(player.roles);
   const showRoles = !(roleKeys.length === 1 && roleKeys[0] === "Player");
   const winrate = calcWinrate(player.wins, player.games);
@@ -50,7 +50,7 @@ export function PlayerCard({ name, player }) {
           <StatRow label="K / D" value={`${player.kills} / ${player.deaths}`} />
           <StatRow
             label="Ratio"
-            value={<span className={kdColor(kdRatio)}>{kdRatio}</span>}
+            value={<span className={kdColor(kdRatio, kdAverage)}>{kdRatio}</span>}
           />
         </>
       )}
