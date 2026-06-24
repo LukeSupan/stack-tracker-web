@@ -15,7 +15,7 @@ export function SavesPanel({
   onSignOut,
 }) {
   return (
-    <div className="mt-6 min-h-64 max-h-[70vh] overflow-auto resize-y border border-zinc-500 bg-zinc-700 p-3">
+    <div className="mt-6 min-h-64 max-h-[70vh] overflow-hidden resize-y border border-zinc-500 bg-zinc-700 p-3 flex flex-col">
       <div className="flex items-center justify-between mb-3">
         <div>
           <div className="text-zinc-100 text-xs uppercase tracking-widest">
@@ -69,7 +69,7 @@ export function SavesPanel({
       )}
       {savesError && <p className="text-red-400 text-xs mb-2">{savesError}</p>}
 
-      <div className="max-h-52 overflow-y-auto border-t border-zinc-600 pt-2 pr-3">
+      <div className="min-h-0 flex-1 overflow-y-auto border-t border-zinc-600 pt-2 pr-4">
         {savesLoading ? (
           <p className="text-zinc-400 text-xs">Loading saves...</p>
         ) : saves.length === 0 ? (
@@ -90,7 +90,7 @@ export function SavesPanel({
               >
                 {save.name}
               </button>
-              <div className="flex items-center gap-3 mt-1">
+              <div className="flex items-center justify-between gap-3 mt-1">
                 <span className="text-zinc-500 text-[11px]">
                   {new Date(save.updated_at).toLocaleDateString()}
                 </span>
