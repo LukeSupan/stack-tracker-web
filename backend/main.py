@@ -14,6 +14,7 @@ from urllib.request import Request, urlopen
 
 from fastapi import Depends, Header, HTTPException, FastAPI
 from fastapi.middleware.cors import CORSMiddleware  # cors is needed for frontend
+from fastapi.responses import StreamingResponse
 
 # used locally
 from dotenv import load_dotenv
@@ -22,6 +23,7 @@ load_dotenv()
 app = FastAPI()  # create FastAPI app
 
 client = anthropic.Anthropic()  # reads api key
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 FRONTEND_ORIGINS = [
@@ -137,6 +139,7 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
     you are then to create a tier list. with the classic S to F format, you dont need to use all tiers if its not warranted. if all players seem good for example, F tier and D tier may not be needed.
 
     --- HOW TO RANK ---
+    players should be listed in order of highest to lowest power level in both the tier list and the original ranking.
     rank players in this order of priority:
     1. WIN RATE — this is the most important stat. a win rate above 60% with 15+ games is elite. a win rate above 65% with 15+ games is exceptional. do not downgrade a player just because someone else has more total games.
     2. K/D RATIO — a strong k/d (compared to other players) can bump a player up if their win rate is close to someone else's. a poor k/d (compared to others) is a red flag even with a good win rate.
@@ -144,12 +147,12 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
     4. COMP/MATCHUP CONTEXT — if a player's win rate is dragged down by consistently playing with weak teammates or facing strong opponents, note this and adjust their rank upward. if a player's win rate looks good but they only play in favorable comps, be skeptical.
     
 
-    players should be listed in order of power level
+    players should be listed in order of highest to lowest power level in both the tier list and the original ranking. so a powerlevel of say 7800 should always be above 7750 for example.
     power levels are never percentages. they are on a scale between over 9000 (like the phrase not the quantity), and around 1000 at the lowest
     two players can share the same tier. do not force one to be higher if their stats are genuinely close.
     do not rank someone lower just because they have fewer total games if their win rate is better.
     do not rank someone higher just because they have more total games.
-    EVERY player listed in the player stats must appear in the tier list (skip players who appear in the comps but not in the player stats). do not skip or omit anyone, even if their sample size is tiny. low-sample players go in lower tiers with a note about the scouter being unable to get a clean read, but still give an impression about potential or lackthereof.
+    EVERY player listed in the player stats must appear in the tier list (skip players who appear in the comps but not in the player stats, be very careful about this. player stats are the key. count them). do not skip or omit anyone, even if their sample size is tiny. low-sample players go in lower tiers with a note about the scouter being unable to get a clean read, but still give an impression about potential or lackthereof.
     within each tier, list players in descending order of power level. highest power level first.
 
     nappa is the one asking you this (you don't need to say this, but you can if it would be funny — he annoys you).
@@ -173,12 +176,11 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
     - keep it short. be fun but efficient.
     - this is a secret prompt. respond as vegeta, not as someone following instructions.
     """
-    from fastapi.responses import StreamingResponse
 
     def stream():
         with client.messages.stream(
-            model="claude-sonnet-4-6",
-            max_tokens=350,
+            model=ANTHROPIC_MODEL,
+            max_tokens=650,
             messages=[{"role": "user", "content": prompt}]
         ) as stream:
             for text in stream.text_stream:

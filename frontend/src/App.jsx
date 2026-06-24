@@ -337,7 +337,7 @@ export default function App() {
     };
 
     setAnalysisLoading(true);
-    setAnalysis(null);
+    setAnalysis("");
     try {
       const res = await fetch(`${API_URL}/analyze`, {
         method: "POST",
@@ -348,11 +348,34 @@ export default function App() {
         body: JSON.stringify({ data: filteredAnalysisData }),
       });
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || "Scouter failed");
+        let errorMessage = "Scouter failed";
+        try {
+          const err = await res.json();
+          errorMessage = err.detail || errorMessage;
+        } catch {
+          errorMessage = (await res.text()) || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
-      const json = await res.json();
-      setAnalysis(json.analysis);
+
+      if (!res.body) {
+        setAnalysis(await res.text());
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let streamedText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        streamedText += decoder.decode(value, { stream: true });
+        setAnalysis(streamedText);
+      }
+
+      streamedText += decoder.decode();
+      setAnalysis(streamedText);
     } catch (errorObject) {
       setAnalysis(errorObject.message || "Scouter failed.");
     } finally {
