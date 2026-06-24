@@ -1,3 +1,11 @@
+import { useRef, useState } from "react";
+import {
+  readStoredNumber,
+  usePersistedElementHeight,
+} from "../hooks/usePersistedElementSize";
+
+const SAVES_PANEL_HEIGHT_KEY = "savesPanelHeight";
+
 export function SavesPanel({
   userEmail,
   saves,
@@ -14,8 +22,19 @@ export function SavesPanel({
   onNew,
   onSignOut,
 }) {
+  const savesPanelRef = useRef(null);
+  const [savesPanelHeight] = useState(() =>
+    readStoredNumber(SAVES_PANEL_HEIGHT_KEY, 256, 256),
+  );
+
+  usePersistedElementHeight(savesPanelRef, SAVES_PANEL_HEIGHT_KEY);
+
   return (
-    <div className="mt-6 min-h-64 max-h-[70vh] overflow-hidden resize-y border border-zinc-500 bg-zinc-700 p-3 flex flex-col">
+    <div
+      ref={savesPanelRef}
+      className="mt-6 min-h-64 max-h-[70vh] overflow-hidden resize-y border border-zinc-500 bg-zinc-700 p-3 flex flex-col"
+      style={{ height: savesPanelHeight }}
+    >
       <div className="flex items-center justify-between mb-3">
         <div>
           <div className="text-zinc-100 text-xs uppercase tracking-widest">
