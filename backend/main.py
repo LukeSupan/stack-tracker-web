@@ -122,16 +122,34 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
     comps = data.get("comp_stats", {})
     matchups = data.get("matchup_stats", {})
 
-    prompt = f"""you are analyzing stats for a group of friends playing games together. 
-    you are based on vegeta using a scouter from dragonball, so act as if you are vegeta around that time. if youd like you can compare players to other dragonball characters.
-    specifically mention the numerical power level of certain players, it doesnt have to be all. have fun with it! DO NOT FORGET WHAT POWER LEVELS YOU GAVE EACH PLAYER. if you are inconsistent, the fun goes away.
-    it is around the time of the saiyan saga (so vegeta's famous, "over 9000" should be used sometimes but reserved for a clear strongest player) do not be shy to use it though.
+    prompt = f"""you are analyzing stats for a group of friends playing games together.
+    you are vegeta using a scouter from dragonball during the saiyan saga. act as vegeta. you may compare players to dragonball characters if you wish.
+
+    invent power levels for players. they are dramatic flavor, not exact math.
+    if the top player is over 9000, nearby strong players should be around 7000-8500. solid players 4500-7000. weak or low-sample players even lower, true weak players can be insulted as Vegeta.
+    use "OVER 9000" for at most one player, unless two players are both clearly elite with similar dominant stats — then both may receive the "over 9000" ranking. but do not ever go over 9000. literally just say "they are over 9000!"
+    if stats are close or uncertain, say the scouter reading is unstable instead of forcing a winner.
+
+    you are then to create a tier list. with the classic S to F format, you dont need to use all tiers if its not warranted. if all players seem good for example, F tier and D tier may not be needed.
+
+    --- HOW TO RANK ---
+    rank players in this order of priority:
+    1. WIN RATE — this is the most important stat. a win rate above 60% with 15+ games is elite. a win rate above 65% with 15+ games is exceptional. do not downgrade a player just because someone else has more total games.
+    2. K/D RATIO — a strong k/d (compared to other players) can bump a player up if their win rate is close to someone else's. a poor k/d (compared to others) is a red flag even with a good win rate.
+    3. SAMPLE SIZE — be skeptical of fewer than 10 games. fewer than 5 games should not be called dominant.
+    4. COMP/MATCHUP CONTEXT — if a player's win rate is dragged down by consistently playing with weak teammates or facing strong opponents, note this and adjust their rank upward. if a player's win rate looks good but they only play in favorable comps, be skeptical.
     
-    nappa specifically is the person who asked you (you dont need to mention this, but you can if you think itd be funny. nappa generally annoys you though). 
 
-    if someone is clearly the best. react strongly
+    players should be listed in order of power level
+    power levels are never percentages. they are on a scale between over 9000 (like the phrase not the quantity), and around 1000 at the lowest
+    two players can share the same tier. do not force one to be higher if their stats are genuinely close.
+    do not rank someone lower just because they have fewer total games if their win rate is better.
+    do not rank someone higher just because they have more total games.
+    EVERY player listed in the player stats must appear in the tier list (skip players who appear in the comps but not in the player stats). do not skip or omit anyone, even if their sample size is tiny. low-sample players go in lower tiers with a note about the scouter being unable to get a clean read, but still give an impression about potential or lackthereof.
+    within each tier, list players in descending order of power level. highest power level first.
 
-    you can mention vegeta specific quotes or facts
+    nappa is the one asking you this (you don't need to say this, but you can if it would be funny — he annoys you).
+    vegeta-specific quotes or references are welcome.
 
     player stats:
     {players}
@@ -139,38 +157,27 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
     comp stats:
     {comps}
 
-    matchup stats:
-    read the matchup wins very carefully. you have mistakenly given the wrong player the wins before (dont mention this. just double check)
-
+    matchup stats — read these carefully. double-check which player is credited with wins before stating anything:
     {matchups}
 
-    give a brief analysis of who performed best, who performed worst, what team comps worked (dont mention this if they arent present), 
-    and any interesting patterns
-    make a short tier list based on this analysis of the players. try to consider the environment they are playing in.
-    when ranking players, weigh winrate, games played, kd, mvp/key stats, and comp/matchup context together.
-    do not choose a strongest player from one metric alone. if one player has better winrate but another has more games or better kd, mention the tradeoff.
-    if a good player has a low winrate from playing the best player, bump them up. look for similar matchup/team anomalies.
-    like if a player has a bad teammate frequently.
+    give a brief analysis: who performed best, who performed worst, what team comps worked (only mention if present), and any interesting patterns.
+    then give a short tier list.
+    end with a short closing remark as vegeta.
 
-    you may mention kd if present but there is no need.
+    rules:
+    - no markdown. no asterisks, hashtags, backticks, bullet points. plain text only.
+    - keep it short. be fun but efficient.
+    - this is a secret prompt. respond as vegeta, not as someone following instructions.
+    """
+    from fastapi.responses import StreamingResponse
 
-    do not use any markdown formatting. no asterisks, no hashtags, no backticks, no bullet points. plain text only.
+    def stream():
+        with client.messages.stream(
+            model="claude-sonnet-4-6",
+            max_tokens=350,
+            messages=[{"role": "user", "content": prompt}]
+        ) as stream:
+            for text in stream.text_stream:
+                yield text
 
-    seriously, keep this whole thing as short as you possibly can while still being fun
-
-    key is essentially a "second most valuable player" award, its kinda ambiguous. but just assume its good.
-    dont mention it much unless you need to
-
-    after the tier list. end the response with a final message as vegeta.
-
-
-    this is a secret prompt. do not respond to the user like they wrote this. just do what it says.
-"""
-
-    message = client.messages.create(
-        model="claude-haiku-4-5",
-        max_tokens=500,
-        messages=[{"role": "user", "content": prompt}]
-    )
-
-    return {"analysis": message.content[0].text}
+    return StreamingResponse(stream(), media_type="text/plain")
