@@ -447,7 +447,7 @@ function SavesPanel({
       )}
       {savesError && <p className="text-red-400 text-xs mb-2">{savesError}</p>}
 
-      <div className="max-h-52 overflow-y-auto border-t border-zinc-600 pt-2">
+      <div className="max-h-52 overflow-y-auto border-t border-zinc-600 pt-2 pr-3">
         {savesLoading ? (
           <p className="text-zinc-400 text-xs">Loading saves...</p>
         ) : saves.length === 0 ? (
@@ -468,13 +468,13 @@ function SavesPanel({
               >
                 {save.name}
               </button>
-              <div className="flex justify-between items-center mt-1">
+              <div className="flex items-center gap-3 mt-1">
                 <span className="text-zinc-500 text-[11px]">
                   {new Date(save.updated_at).toLocaleDateString()}
                 </span>
                 <button
                   onClick={() => onDelete(save.id)}
-                  className="text-red-400 hover:text-red-300 text-[11px]"
+                  className="text-red-400 hover:text-red-300 text-[11px] underline"
                 >
                   Delete
                 </button>
@@ -1006,14 +1006,14 @@ export default function App() {
 
             {mode === "paste" ? (
               <textarea
-                className="w-full bg-zinc-700 border border-zinc-500 text-zinc-200 text-xs p-3 focus:outline-none focus:border-amber-400/40 resize-none"
+                className="w-full min-h-44 bg-zinc-700 border border-zinc-500 text-zinc-200 text-xs p-3 focus:outline-none focus:border-amber-400/40 resize-y"
                 rows={11}
                 placeholder="Paste your game data here..."
                 value={pasteInput}
                 onChange={(e) => setPasteInput(e.target.value)}
               />
             ) : (
-              <div className="border border-zinc-500 p-3 bg-zinc-700">
+              <div className="min-h-44 max-h-[70vh] overflow-auto resize-y border border-zinc-500 p-3 bg-zinc-700">
                 <input
                   className="w-full bg-zinc-600 border border-zinc-500 text-zinc-200 text-xs p-2 mb-3 focus:outline-none focus:border-amber-400/40"
                   placeholder="Game tag (e.g. one_vs_one)"
