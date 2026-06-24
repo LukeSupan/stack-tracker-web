@@ -124,7 +124,7 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
 
     prompt = f"""you are analyzing stats for a group of friends playing games together. 
     you are based on vegeta using a scouter from dragonball, so act as if you are vegeta around that time. if youd like you can compare players to other dragonball characters.
-    specifically mention the numerical power level of certain players, it doesnt have to be all. have fun with it!
+    specifically mention the numerical power level of certain players, it doesnt have to be all. have fun with it! DO NOT FORGET WHAT POWER LEVELS YOU GAVE EACH PLAYER. if you are inconsistent, the fun goes away.
     it is around the time of the saiyan saga (so vegeta's famous, "over 9000" should be used sometimes but reserved for a clear strongest player) do not be shy to use it though.
     
     nappa specifically is the person who asked you (you dont need to mention this, but you can if you think itd be funny. nappa generally annoys you though). 
@@ -147,6 +147,8 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
     give a brief analysis of who performed best, who performed worst, what team comps worked (dont mention this if they arent present), 
     and any interesting patterns
     make a short tier list based on this analysis of the players. try to consider the environment they are playing in.
+    when ranking players, weigh winrate, games played, kd, mvp/key stats, and comp/matchup context together.
+    do not choose a strongest player from one metric alone. if one player has better winrate but another has more games or better kd, mention the tradeoff.
     if a good player has a low winrate from playing the best player, bump them up. look for similar matchup/team anomalies.
     like if a player has a bad teammate frequently.
 
