@@ -90,99 +90,6 @@ def require_user(authorization: str | None = Header(default=None)):
         raise HTTPException(status_code=503, detail="Auth service unavailable")
 
 
-def player_winrate(player: dict):
-    games = player.get("games", 0) or 0
-    if games == 0:
-        return 0
-    return (player.get("wins", 0) or 0) / games
-
-
-def player_kd(player: dict):
-    kills = player.get("kills", 0) or 0
-    deaths = player.get("deaths", 0) or 0
-    if kills == 0 and deaths == 0:
-        return None
-    if deaths == 0:
-        return float(kills)
-    return kills / deaths
-
-
-def build_power_levels(players: dict):
-    entries = []
-    for name, player in players.items():
-        games = player.get("games", 0) or 0
-        if games <= 0:
-            continue
-
-        entries.append({
-            "name": name,
-            "games": games,
-            "winrate": player_winrate(player),
-            "kd": player_kd(player),
-        })
-
-    if not entries:
-        return {}
-
-    meaningful_entries = [
-        entry for entry in entries if entry["games"] >= 15
-    ] or entries
-    strongest = max(
-        meaningful_entries,
-        key=lambda entry: (
-            entry["winrate"],
-            min(entry["games"], 60),
-            entry["kd"] or 0,
-        ),
-    )
-    strongest_winrate = max(strongest["winrate"], 0.01)
-    strongest_is_meaningful = strongest["games"] >= 15
-
-    kd_values = [entry["kd"] for entry in entries if entry["kd"] is not None]
-    average_kd = (
-        sum(kd_values) / len(kd_values)
-        if kd_values
-        else None
-    )
-
-    power_levels = {}
-    for entry in entries:
-        sample_factor = min(entry["games"] / 15, 1)
-        kd_factor = 1
-        if average_kd and entry["kd"] is not None:
-            kd_factor = min(max(entry["kd"] / average_kd, 0.85), 1.15)
-
-        relative_winrate = entry["winrate"] / strongest_winrate
-        raw_power = 9001 * relative_winrate * (0.72 + 0.28 * sample_factor)
-        raw_power *= kd_factor
-
-        is_strongest = entry["name"] == strongest["name"]
-        over_9000 = is_strongest and strongest_is_meaningful
-        if over_9000:
-            power_level = 9001
-        elif is_strongest:
-            power_level = 8999
-        else:
-            power_level = min(8999, max(100, round(raw_power)))
-
-        if entry["games"] < 3:
-            confidence = "tiny sample"
-        elif entry["games"] < 15:
-            confidence = "low sample"
-        else:
-            confidence = "meaningful sample"
-
-        power_levels[entry["name"]] = {
-            "power_level": power_level,
-            "over_9000": over_9000,
-            "confidence": confidence,
-            "winrate_percent": round(entry["winrate"] * 100, 1),
-            "games": entry["games"],
-        }
-
-    return power_levels
-
-
 @app.post("/stats")
 def get_stats(payload: dict):
 
@@ -218,23 +125,21 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
     players = data.get("player_stats", {})
     comps = data.get("comp_stats", {})
     matchups = data.get("matchup_stats", {})
-    power_levels = build_power_levels(players)
-    power_level_text = json.dumps(power_levels, indent=2)
 
     prompt = f"""you are analyzing stats for a group of friends playing games together. 
     you are based on vegeta using a scouter from dragonball, so act as if you are vegeta around that time. if youd like you can compare players to other dragonball characters.
-    use the computed power levels exactly as provided. do not invent, recalculate, round differently, or change any power level.
-    only a player with over_9000 set to true may be described as "OVER 9000". if no player has over_9000 true, do not use the over 9000 joke.
-    power levels should feel like a natural scale: the strongest meaningful player can be over 9000, strong players should be below that, and weaker or low-sample players should be much lower.
-    it is around the time of the saiyan saga, so vegeta's famous "over 9000" line should only be used for the provided over_9000 player.
+    invent numerical power levels for some players, but keep them internally consistent.
+    power levels are dramatic flavor, not exact math. the strongest meaningful player may be over 9000 if they truly stand out.
+    use "OVER 9000" for at most one player, unless there are two best players that have extremely similar stats.
+    if the top player is over 9000, strong nearby players should usually be somewhere like 7000-8500, solid players around 4500-7000, weak or low-sample players much lower.
+    if the stats are close or uncertain, do not use over 9000 at all. say the scouter reading is unstable instead.
+    never claim someone is dominant by win rate alone if another player has a clearly higher win rate at a meaningful sample.
+    it is around the time of the saiyan saga, so vegeta's famous "over 9000" line should feel rare and earned.
 
     nappa specifically is the person who asked you (you dont need to mention this, but you can if you think itd be funny. nappa generally annoys you though). 
     if someone is clearly best across multiple meaningful stats, react strongly.
     if the stats are mixed, act annoyed that the scouter reading is inconclusive instead of forcing a single obvious strongest player.
     you can mention vegeta specific quotes or facts
-
-    computed power levels:
-    {power_level_text}
 
     player stats:
     {players}

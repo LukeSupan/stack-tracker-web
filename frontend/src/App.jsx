@@ -45,6 +45,9 @@ export default function App() {
   const [roleCompMinGames, setRoleCompMinGames] = useState(() =>
     readMinGamesSetting("roleCompMinGames"),
   );
+  const [matchupMinGames, setMatchupMinGames] = useState(() =>
+    readMinGamesSetting("matchupMinGames"),
+  );
 
   // sidebar resize
   const [sidebarWidth, setSidebarWidth] = useState(() =>
@@ -208,8 +211,13 @@ export default function App() {
     }
   }, [roleCompMinGames]);
   useEffect(() => {
+    if (matchupMinGames !== "") {
+      localStorage.setItem("matchupMinGames", String(minGamesValue(matchupMinGames)));
+    }
+  }, [matchupMinGames]);
+  useEffect(() => {
     setAnalysis(null);
-  }, [playerMinGames, compMinGames, roleCompMinGames]);
+  }, [playerMinGames, compMinGames, roleCompMinGames, matchupMinGames]);
 
   useEffect(() => {
     function onKey(e) {
@@ -321,6 +329,10 @@ export default function App() {
       role_comp_stats: filterStatsByGames(
         data.role_comp_stats,
         minGamesValue(roleCompMinGames),
+      ),
+      matchup_stats: filterStatsByGames(
+        data.matchup_stats,
+        minGamesValue(matchupMinGames),
       ),
     };
 
@@ -543,10 +555,17 @@ export default function App() {
         winrateVal(b.wins, b.games) - winrateVal(a.wins, a.games),
     );
   }
+  function sortedMatchups() {
+    if (!data?.matchup_stats) return [];
+    return Object.entries(
+      filterStatsByGames(data.matchup_stats, minGamesValue(matchupMinGames)),
+    ).sort(([, a], [, b]) => b.games - a.games);
+  }
 
   const visiblePlayers = sortedPlayers();
   const visibleComps = sortedComps();
   const visibleRoleComps = sortedRoleComps();
+  const visibleMatchups = sortedMatchups();
   const visiblePlayerKDAverage = averagePlayerKD(visiblePlayers);
 
   return (
@@ -713,7 +732,7 @@ export default function App() {
                         : "Sign in required"}
                   </button>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 mb-3">
                   <MinGamesInput
                     label="Player min games"
                     value={playerMinGames}
@@ -728,6 +747,11 @@ export default function App() {
                     label="Role comp min games"
                     value={roleCompMinGames}
                     onChange={setRoleCompMinGames}
+                  />
+                  <MinGamesInput
+                    label="Matchup min games"
+                    value={matchupMinGames}
+                    onChange={setMatchupMinGames}
                   />
                 </div>
                 <p className="text-zinc-500 text-[11px] mb-3">
@@ -804,9 +828,19 @@ export default function App() {
             {data.matchup_stats && (
               <Section title="Matchups">
                 <div className="max-w-lg">
-                  {Object.entries(data.matchup_stats).map(([matchup, m]) => (
-                    <MatchupRow key={matchup} matchup={matchup} data={m} />
-                  ))}
+                  {visibleMatchups.length > 0 ? (
+                    visibleMatchups.map(([matchup, matchupData]) => (
+                      <MatchupRow
+                        key={matchup}
+                        matchup={matchup}
+                        data={matchupData}
+                      />
+                    ))
+                  ) : (
+                    <p className="text-zinc-400 text-sm">
+                      No matchups meet the current cutoff.
+                    </p>
+                  )}
                 </div>
               </Section>
             )}
