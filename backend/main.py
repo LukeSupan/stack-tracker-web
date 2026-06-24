@@ -147,6 +147,8 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
     give a brief analysis of who performed best, who performed worst, what team comps worked (dont mention this if they arent present), 
     and any interesting patterns
     make a short tier list based on this analysis of the players. try to consider the environment they are playing in.
+    when ranking players, weigh winrate, games played, kd, mvp/key stats, and comp/matchup context together.
+    do not choose a strongest player from one metric alone. if one player has better winrate but another has more games or better kd, mention the tradeoff.
     if a good player has a low winrate from playing the best player, bump them up. look for similar matchup/team anomalies.
     like if a player has a bad teammate frequently.
 
