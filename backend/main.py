@@ -1,5 +1,10 @@
 import anthropic
-from fastapi import FastAPI, HTTPException
+import json
+import os
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
+
+from fastapi import Depends, Header, HTTPException, FastAPI
 from fastapi.middleware.cors import CORSMiddleware # cors is needed for frontend
 
 # used locally
@@ -9,12 +14,21 @@ load_dotenv()
 app = FastAPI() # create FastAPI app
 
 client = anthropic.Anthropic()  # reads api key
+SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
+FRONTEND_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "FRONTEND_ORIGINS",
+        "https://power-level-scouter.vercel.app,http://localhost:5173,http://127.0.0.1:5173",
+    ).split(",")
+    if origin.strip()
+]
 
 # add middleware to allow frontend
-# this will be limited later
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=FRONTEND_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"]
 )
@@ -48,6 +62,34 @@ GAME_RUNNERS = {
 }
 
 
+def require_user(authorization: str | None = Header(default=None)):
+    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+        raise HTTPException(status_code=500, detail="Auth is not configured")
+
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing auth token")
+
+    token = authorization.removeprefix("Bearer ").strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing auth token")
+
+    request = Request(
+        f"{SUPABASE_URL}/auth/v1/user",
+        headers={
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": f"Bearer {token}",
+        },
+    )
+
+    try:
+        with urlopen(request, timeout=10) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except HTTPError:
+        raise HTTPException(status_code=401, detail="Invalid auth token")
+    except (URLError, TimeoutError):
+        raise HTTPException(status_code=503, detail="Auth service unavailable")
+
+
 @app.post("/stats")
 def get_stats(payload: dict):
 
@@ -72,7 +114,7 @@ def get_stats(payload: dict):
 
 # claude prompt
 @app.post("/analyze")
-def analyze(payload: dict):
+def analyze(payload: dict, user: dict = Depends(require_user)):
     data = payload["data"]
 
     # build a readable summary of the stats to feed the model

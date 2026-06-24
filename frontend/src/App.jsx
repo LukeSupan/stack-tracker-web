@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { supabase } from "./supabaseClient";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
@@ -268,6 +269,189 @@ function HowToUseModal({ onClose }) {
   );
 }
 
+function AuthPanel({
+  supabaseReady,
+  authMode,
+  setAuthMode,
+  authEmail,
+  setAuthEmail,
+  authPassword,
+  setAuthPassword,
+  authLoading,
+  authMessage,
+  authError,
+  onSubmit,
+}) {
+  return (
+    <div className="mt-6 border border-zinc-500 bg-zinc-700 p-3">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-zinc-100 text-xs uppercase tracking-widest">
+          Account
+        </span>
+        <button
+          onClick={() =>
+            setAuthMode(authMode === "signIn" ? "signUp" : "signIn")
+          }
+          className="text-zinc-400 hover:text-amber-400 text-xs underline"
+        >
+          {authMode === "signIn" ? "Create account" : "Sign in"}
+        </button>
+      </div>
+
+      {!supabaseReady ? (
+        <p className="text-red-400 text-xs">
+          Supabase is not configured. Add your Vite env values first.
+        </p>
+      ) : (
+        <form onSubmit={onSubmit} className="space-y-2">
+          <input
+            className="w-full bg-zinc-600 border border-zinc-500 text-zinc-200 text-xs p-2 focus:outline-none focus:border-amber-400/40"
+            type="email"
+            placeholder="Email"
+            value={authEmail}
+            onChange={(event) => setAuthEmail(event.target.value)}
+            required
+          />
+          <input
+            className="w-full bg-zinc-600 border border-zinc-500 text-zinc-200 text-xs p-2 focus:outline-none focus:border-amber-400/40"
+            type="password"
+            placeholder="Password"
+            value={authPassword}
+            onChange={(event) => setAuthPassword(event.target.value)}
+            required
+          />
+          <button
+            type="submit"
+            disabled={authLoading}
+            className="w-full px-3 py-2 bg-zinc-800 hover:bg-zinc-600 text-white text-xs disabled:opacity-50"
+          >
+            {authLoading
+              ? "Working..."
+              : authMode === "signIn"
+                ? "Sign In"
+                : "Sign Up"}
+          </button>
+          {authMessage && (
+            <p className="text-emerald-400 text-xs">{authMessage}</p>
+          )}
+          {authError && <p className="text-red-400 text-xs">{authError}</p>}
+        </form>
+      )}
+    </div>
+  );
+}
+
+function SavesPanel({
+  userEmail,
+  saves,
+  savesLoading,
+  savesError,
+  saveMessage,
+  saveName,
+  setSaveName,
+  activeSaveId,
+  onSave,
+  onSaveAsNew,
+  onLoad,
+  onDelete,
+  onNew,
+  onSignOut,
+}) {
+  return (
+    <div className="mt-6 border border-zinc-500 bg-zinc-700 p-3">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <div className="text-zinc-100 text-xs uppercase tracking-widest">
+            Saves
+          </div>
+          <div className="text-zinc-400 text-[11px] truncate max-w-44">
+            {userEmail}
+          </div>
+        </div>
+        <button
+          onClick={onSignOut}
+          className="text-zinc-400 hover:text-amber-400 text-xs underline"
+        >
+          Sign out
+        </button>
+      </div>
+
+      <input
+        className="w-full bg-zinc-600 border border-zinc-500 text-zinc-200 text-xs p-2 mb-2 focus:outline-none focus:border-amber-400/40"
+        placeholder="Save name"
+        value={saveName}
+        onChange={(event) => setSaveName(event.target.value)}
+      />
+
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <button
+          onClick={onSave}
+          className="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs"
+        >
+          {activeSaveId ? "Update Save" : "Save New"}
+        </button>
+        <button
+          onClick={onNew}
+          className="px-3 py-2 bg-zinc-800 hover:bg-zinc-600 text-white text-xs"
+        >
+          New Blank
+        </button>
+      </div>
+
+      {activeSaveId && (
+        <button
+          onClick={onSaveAsNew}
+          className="w-full mb-3 px-3 py-2 bg-zinc-800 hover:bg-zinc-600 text-white text-xs"
+        >
+          Save as Copy
+        </button>
+      )}
+
+      {saveMessage && (
+        <p className="text-emerald-400 text-xs mb-2">{saveMessage}</p>
+      )}
+      {savesError && <p className="text-red-400 text-xs mb-2">{savesError}</p>}
+
+      <div className="max-h-52 overflow-y-auto border-t border-zinc-600 pt-2">
+        {savesLoading ? (
+          <p className="text-zinc-400 text-xs">Loading saves...</p>
+        ) : saves.length === 0 ? (
+          <p className="text-zinc-400 text-xs">No cloud saves yet.</p>
+        ) : (
+          saves.map((save) => (
+            <div
+              key={save.id}
+              className="py-2 border-b border-zinc-600 last:border-0"
+            >
+              <button
+                onClick={() => onLoad(save)}
+                className={`block w-full text-left text-xs ${
+                  save.id === activeSaveId
+                    ? "text-amber-400"
+                    : "text-zinc-100 hover:text-white"
+                }`}
+              >
+                {save.name}
+              </button>
+              <div className="flex justify-between items-center mt-1">
+                <span className="text-zinc-500 text-[11px]">
+                  {new Date(save.updated_at).toLocaleDateString()}
+                </span>
+                <button
+                  onClick={() => onDelete(save.id)}
+                  className="text-red-400 hover:text-red-300 text-[11px]"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [mode, setMode] = useState("paste");
   const [data, setData] = useState(null);
@@ -324,6 +508,75 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
   const [currentLine, setCurrentLine] = useState("");
+  const [session, setSession] = useState(null);
+  const [authMode, setAuthMode] = useState("signIn");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authLoading, setAuthLoading] = useState(Boolean(supabase));
+  const [authMessage, setAuthMessage] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [saves, setSaves] = useState([]);
+  const [savesLoading, setSavesLoading] = useState(false);
+  const [savesError, setSavesError] = useState("");
+  const [saveMessage, setSaveMessage] = useState("");
+  const [saveName, setSaveName] = useState("");
+  const [activeSaveId, setActiveSaveId] = useState(null);
+
+  const fetchSaves = useCallback(async () => {
+    if (!supabase || !session) return;
+    setSavesLoading(true);
+    setSavesError("");
+    try {
+      const { data: loadedSaves, error: loadError } = await supabase
+        .from("saves")
+        .select("id,name,content,created_at,updated_at")
+        .order("updated_at", { ascending: false });
+
+      if (loadError) throw loadError;
+      setSaves(loadedSaves || []);
+    } catch (errorObject) {
+      setSavesError(errorObject.message);
+    } finally {
+      setSavesLoading(false);
+    }
+  }, [session]);
+
+  useEffect(() => {
+    if (!supabase) {
+      setAuthLoading(false);
+      return undefined;
+    }
+
+    let mounted = true;
+
+    supabase.auth.getSession().then(({ data: sessionData }) => {
+      if (!mounted) return;
+      setSession(sessionData.session);
+      setAuthLoading(false);
+    });
+
+    const { data: listenerData } = supabase.auth.onAuthStateChange(
+      (authEvent, currentSession) => {
+        setSession(currentSession);
+        if (authEvent === "SIGNED_OUT") {
+          setSaves([]);
+          setActiveSaveId(null);
+          setSaveName("");
+        }
+      },
+    );
+
+    return () => {
+      mounted = false;
+      listenerData.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (session) {
+      fetchSaves();
+    }
+  }, [session, fetchSaves]);
 
   useEffect(() => {
     localStorage.setItem("pasteInput", pasteInput);
@@ -371,6 +624,27 @@ export default function App() {
   function toggleMode() {
     mode === "paste" ? switchToEasy() : switchToPaste();
   }
+  function currentContent() {
+    if (mode === "paste") return pasteInput.trim();
+    return easyToLines()
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .join("\n");
+  }
+  function applySavedContent(content) {
+    const lines = content
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    setPasteInput(content);
+    setGameTag(lines[0] || "");
+    setGames(lines.slice(1));
+    setCurrentLine("");
+    setMode("paste");
+    setData(null);
+    setAnalysis(null);
+    setError(null);
+  }
   function addGame() {
     if (!currentLine.trim()) return;
     setGames((prev) => [...prev, currentLine.trim()]);
@@ -407,22 +681,172 @@ export default function App() {
   }
 
   async function runScouter() {
+    if (!session) {
+      setAnalysis("Sign in to run the Scouter.");
+      return;
+    }
+
     setAnalysisLoading(true);
     setAnalysis(null);
     try {
       const res = await fetch(`${API_URL}/analyze`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({ data }),
       });
-      if (!res.ok) throw new Error("Scouter failed");
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || "Scouter failed");
+      }
       const json = await res.json();
       setAnalysis(json.analysis);
-    // eslint-disable-next-line no-unused-vars
-    } catch (e) {
-      setAnalysis("Scouter failed.");
+    } catch (errorObject) {
+      setAnalysis(errorObject.message || "Scouter failed.");
     } finally {
       setAnalysisLoading(false);
+    }
+  }
+
+  async function handleAuth(event) {
+    event.preventDefault();
+    if (!supabase) return;
+
+    setAuthLoading(true);
+    setAuthMessage("");
+    setAuthError("");
+
+    try {
+      const email = authEmail.trim();
+      const password = authPassword;
+      const authResponse =
+        authMode === "signIn"
+          ? await supabase.auth.signInWithPassword({ email, password })
+          : await supabase.auth.signUp({ email, password });
+
+      if (authResponse.error) throw authResponse.error;
+
+      if (authMode === "signUp" && !authResponse.data.session) {
+        setAuthMessage("Check your email to confirm your account.");
+      } else {
+        setAuthMessage(authMode === "signIn" ? "Signed in." : "Signed up.");
+      }
+      setAuthPassword("");
+    } catch (errorObject) {
+      setAuthError(errorObject.message);
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function signOut() {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+  }
+
+  async function writeSave({ forceNew = false } = {}) {
+    if (!supabase || !session) return;
+
+    const name = saveName.trim();
+    const content = currentContent();
+
+    if (!name) {
+      setSavesError("Give this save a name first.");
+      return;
+    }
+
+    if (!content) {
+      setSavesError("There is no game data to save yet.");
+      return;
+    }
+
+    setSavesError("");
+    setSaveMessage("");
+
+    try {
+      if (activeSaveId && !forceNew) {
+        const { data: updatedSave, error: updateError } = await supabase
+          .from("saves")
+          .update({ name, content })
+          .eq("id", activeSaveId)
+          .select("id,name,content,created_at,updated_at")
+          .single();
+
+        if (updateError) throw updateError;
+        setSaves((previousSaves) => [
+          updatedSave,
+          ...previousSaves.filter((save) => save.id !== updatedSave.id),
+        ]);
+        setSaveMessage("Save updated.");
+        return;
+      }
+
+      const { data: createdSave, error: createError } = await supabase
+        .from("saves")
+        .insert({ user_id: session.user.id, name, content })
+        .select("id,name,content,created_at,updated_at")
+        .single();
+
+      if (createError) throw createError;
+      setActiveSaveId(createdSave.id);
+      setSaves((previousSaves) => [
+        createdSave,
+        ...previousSaves.filter((save) => save.id !== createdSave.id),
+      ]);
+      setSaveMessage("Save created.");
+    } catch (errorObject) {
+      setSavesError(errorObject.message);
+    }
+  }
+
+  function loadSave(save) {
+    setActiveSaveId(save.id);
+    setSaveName(save.name);
+    setSaveMessage("");
+    setSavesError("");
+    applySavedContent(save.content);
+  }
+
+  function newBlankSave() {
+    setActiveSaveId(null);
+    setSaveName("");
+    setPasteInput("");
+    setGameTag("");
+    setGames([]);
+    setCurrentLine("");
+    setData(null);
+    setAnalysis(null);
+    setError(null);
+    setSaveMessage("");
+    setSavesError("");
+  }
+
+  async function deleteSave(saveId) {
+    if (!supabase) return;
+    const confirmed = window.confirm("Delete this save permanently?");
+    if (!confirmed) return;
+
+    setSavesError("");
+    setSaveMessage("");
+
+    try {
+      const { error: deleteError } = await supabase
+        .from("saves")
+        .delete()
+        .eq("id", saveId);
+
+      if (deleteError) throw deleteError;
+      setSaves((previousSaves) =>
+        previousSaves.filter((save) => save.id !== saveId),
+      );
+      if (saveId === activeSaveId) {
+        setActiveSaveId(null);
+      }
+      setSaveMessage("Save deleted.");
+    } catch (errorObject) {
+      setSavesError(errorObject.message);
     }
   }
 
@@ -546,6 +970,39 @@ export default function App() {
               {loading ? "Loading..." : "Submit"}
             </button>
             {error && <p className="text-red-400 text-xs mt-2">{error}</p>}
+
+            {session ? (
+              <SavesPanel
+                userEmail={session.user.email}
+                saves={saves}
+                savesLoading={savesLoading}
+                savesError={savesError}
+                saveMessage={saveMessage}
+                saveName={saveName}
+                setSaveName={setSaveName}
+                activeSaveId={activeSaveId}
+                onSave={() => writeSave()}
+                onSaveAsNew={() => writeSave({ forceNew: true })}
+                onLoad={loadSave}
+                onDelete={deleteSave}
+                onNew={newBlankSave}
+                onSignOut={signOut}
+              />
+            ) : (
+              <AuthPanel
+                supabaseReady={Boolean(supabase)}
+                authMode={authMode}
+                setAuthMode={setAuthMode}
+                authEmail={authEmail}
+                setAuthEmail={setAuthEmail}
+                authPassword={authPassword}
+                setAuthPassword={setAuthPassword}
+                authLoading={authLoading}
+                authMessage={authMessage}
+                authError={authError}
+                onSubmit={handleAuth}
+              />
+            )}
           </div>
         </div>
 
@@ -566,10 +1023,14 @@ export default function App() {
                   </span>
                   <button
                     onClick={runScouter}
-                    disabled={analysisLoading}
+                    disabled={analysisLoading || !session}
                     className="px-3 py-1 bg-zinc-700 hover:bg-zinc-600 text-white text-xs disabled:opacity-50"
                   >
-                    {analysisLoading ? "Scanning..." : "Run Scouter"}
+                    {analysisLoading
+                      ? "Scanning..."
+                      : session
+                        ? "Run Scouter"
+                        : "Sign in required"}
                   </button>
                 </div>
                 {analysis ? (
