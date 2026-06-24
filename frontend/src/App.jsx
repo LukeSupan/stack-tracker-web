@@ -15,7 +15,8 @@ function winrateVal(wins, games) {
 
 function winrateColor(winrate) {
   const val = parseFloat(winrate);
-  if (val >= 60) return "text-emerald-400";
+  if (val >= 60) return "text-sky-400";
+  if (val > 50) return "text-emerald-400";
   if (val >= 45) return "text-yellow-400";
   return "text-red-400";
 }
@@ -179,6 +180,40 @@ function Section({ title, children }) {
       </h2>
       {children}
     </div>
+  );
+}
+
+function MinGamesInput({ label, value, onChange }) {
+  return (
+    <label className="text-zinc-400 text-xs">
+      <span className="block mb-1">{label}</span>
+      <input
+        className="w-full bg-zinc-600 border border-zinc-500 text-zinc-100 text-xs p-2 focus:outline-none focus:border-amber-400/40"
+        type="number"
+        min="0"
+        step="1"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </label>
+  );
+}
+
+function readMinGamesSetting(key) {
+  const saved = localStorage.getItem(key);
+  const parsed = Number.parseInt(saved || "1", 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? String(parsed) : "1";
+}
+
+function minGamesValue(value) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+function filterStatsByGames(stats, minGames) {
+  if (!stats) return stats;
+  return Object.fromEntries(
+    Object.entries(stats).filter(([, stat]) => (stat.games || 0) >= minGames),
   );
 }
 
@@ -460,6 +495,15 @@ export default function App() {
   const [showHelp, setShowHelp] = useState(false);
   const [analysis, setAnalysis] = useState(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [playerMinGames, setPlayerMinGames] = useState(() =>
+    readMinGamesSetting("playerMinGames"),
+  );
+  const [compMinGames, setCompMinGames] = useState(() =>
+    readMinGamesSetting("compMinGames"),
+  );
+  const [roleCompMinGames, setRoleCompMinGames] = useState(() =>
+    readMinGamesSetting("roleCompMinGames"),
+  );
 
   // sidebar resize
   const [sidebarWidth, setSidebarWidth] = useState(320);
@@ -587,6 +631,27 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("games", JSON.stringify(games));
   }, [games]);
+  useEffect(() => {
+    if (playerMinGames !== "") {
+      localStorage.setItem("playerMinGames", String(minGamesValue(playerMinGames)));
+    }
+  }, [playerMinGames]);
+  useEffect(() => {
+    if (compMinGames !== "") {
+      localStorage.setItem("compMinGames", String(minGamesValue(compMinGames)));
+    }
+  }, [compMinGames]);
+  useEffect(() => {
+    if (roleCompMinGames !== "") {
+      localStorage.setItem(
+        "roleCompMinGames",
+        String(minGamesValue(roleCompMinGames)),
+      );
+    }
+  }, [roleCompMinGames]);
+  useEffect(() => {
+    setAnalysis(null);
+  }, [playerMinGames, compMinGames, roleCompMinGames]);
 
   useEffect(() => {
     function onKey(e) {
@@ -686,6 +751,19 @@ export default function App() {
       return;
     }
 
+    const filteredAnalysisData = {
+      ...data,
+      player_stats: filterStatsByGames(
+        data.player_stats,
+        minGamesValue(playerMinGames),
+      ),
+      comp_stats: filterStatsByGames(data.comp_stats, minGamesValue(compMinGames)),
+      role_comp_stats: filterStatsByGames(
+        data.role_comp_stats,
+        minGamesValue(roleCompMinGames),
+      ),
+    };
+
     setAnalysisLoading(true);
     setAnalysis(null);
     try {
@@ -695,7 +773,7 @@ export default function App() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ data }),
+        body: JSON.stringify({ data: filteredAnalysisData }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -855,25 +933,35 @@ export default function App() {
 
   function sortedPlayers() {
     if (!data) return [];
-    return Object.entries(data.player_stats).sort(
+    return Object.entries(
+      filterStatsByGames(data.player_stats, minGamesValue(playerMinGames)),
+    ).sort(
       ([, a], [, b]) =>
         winrateVal(b.wins, b.games) - winrateVal(a.wins, a.games),
     );
   }
   function sortedComps() {
     if (!data?.comp_stats) return [];
-    return Object.entries(data.comp_stats).sort(
+    return Object.entries(
+      filterStatsByGames(data.comp_stats, minGamesValue(compMinGames)),
+    ).sort(
       ([, a], [, b]) =>
         winrateVal(b.wins, b.games) - winrateVal(a.wins, a.games),
     );
   }
   function sortedRoleComps() {
     if (!data?.role_comp_stats) return [];
-    return Object.entries(data.role_comp_stats).sort(
+    return Object.entries(
+      filterStatsByGames(data.role_comp_stats, minGamesValue(roleCompMinGames)),
+    ).sort(
       ([, a], [, b]) =>
         winrateVal(b.wins, b.games) - winrateVal(a.wins, a.games),
     );
   }
+
+  const visiblePlayers = sortedPlayers();
+  const visibleComps = sortedComps();
+  const visibleRoleComps = sortedRoleComps();
 
   return (
     <div
@@ -1033,6 +1121,26 @@ export default function App() {
                         : "Sign in required"}
                   </button>
                 </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+                  <MinGamesInput
+                    label="Player min games"
+                    value={playerMinGames}
+                    onChange={setPlayerMinGames}
+                  />
+                  <MinGamesInput
+                    label="Comp min games"
+                    value={compMinGames}
+                    onChange={setCompMinGames}
+                  />
+                  <MinGamesInput
+                    label="Role comp min games"
+                    value={roleCompMinGames}
+                    onChange={setRoleCompMinGames}
+                  />
+                </div>
+                <p className="text-zinc-500 text-[11px] mb-3">
+                  These cutoffs filter visible stats and what Vegeta sees.
+                </p>
                 {analysis ? (
                   <p className="text-zinc-100 text-sm leading-relaxed whitespace-pre-line">
                     {analysis}
@@ -1047,18 +1155,30 @@ export default function App() {
 
             <Section title="Player Stats">
               <div className="flex flex-wrap gap-3">
-                {sortedPlayers().map(([name, player]) => (
-                  <PlayerCard key={name} name={name} player={player} />
-                ))}
+                {visiblePlayers.length > 0 ? (
+                  visiblePlayers.map(([name, player]) => (
+                    <PlayerCard key={name} name={name} player={player} />
+                  ))
+                ) : (
+                  <p className="text-zinc-400 text-sm">
+                    No players meet the current cutoff.
+                  </p>
+                )}
               </div>
             </Section>
 
             {data.comp_stats && (
               <Section title="Comp Stats">
                 <div className="max-w-lg">
-                  {sortedComps().map(([comp, stats]) => (
-                    <CompRow key={comp} name={comp} stats={stats} />
-                  ))}
+                  {visibleComps.length > 0 ? (
+                    visibleComps.map(([comp, stats]) => (
+                      <CompRow key={comp} name={comp} stats={stats} />
+                    ))
+                  ) : (
+                    <p className="text-zinc-400 text-sm">
+                      No comps meet the current cutoff.
+                    </p>
+                  )}
                 </div>
               </Section>
             )}
@@ -1066,14 +1186,20 @@ export default function App() {
             {data.role_comp_stats && data.role_labels && (
               <Section title="Role Comp Stats">
                 <div className="max-w-lg">
-                  {sortedRoleComps().map(([comp, stats]) => (
-                    <RoleCompRow
-                      key={comp}
-                      name={comp}
-                      stats={stats}
-                      roleLabels={data.role_labels}
-                    />
-                  ))}
+                  {visibleRoleComps.length > 0 ? (
+                    visibleRoleComps.map(([comp, stats]) => (
+                      <RoleCompRow
+                        key={comp}
+                        name={comp}
+                        stats={stats}
+                        roleLabels={data.role_labels}
+                      />
+                    ))
+                  ) : (
+                    <p className="text-zinc-400 text-sm">
+                      No role comps meet the current cutoff.
+                    </p>
+                  )}
                 </div>
               </Section>
             )}
