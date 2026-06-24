@@ -1,3 +1,11 @@
+from games.one_vs_one import run as run_one_vs_one
+from games.hero_shooter_versus import run as run_hero_shooter_versus
+from games.lanes_detailed import run as run_lanes_detailed
+from games.moba import run as run_moba
+from games.generic_versus import run as run_generic_versus
+from games.generic import run as run_generic
+from games.lanes import run as run_lanes
+from games.hero_shooter import run as run_hero_shooter
 import anthropic
 import json
 import os
@@ -5,13 +13,13 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from fastapi import Depends, Header, HTTPException, FastAPI
-from fastapi.middleware.cors import CORSMiddleware # cors is needed for frontend
+from fastapi.middleware.cors import CORSMiddleware  # cors is needed for frontend
 
 # used locally
 from dotenv import load_dotenv
 load_dotenv()
 
-app = FastAPI() # create FastAPI app
+app = FastAPI()  # create FastAPI app
 
 client = anthropic.Anthropic()  # reads api key
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
@@ -34,14 +42,6 @@ app.add_middleware(
 )
 
 # import game runners
-from games.hero_shooter import run as run_hero_shooter
-from games.lanes import run as run_lanes
-from games.generic import run as run_generic
-from games.generic_versus import run as run_generic_versus
-from games.moba import run as run_moba
-from games.lanes_detailed import run as run_lanes_detailed
-from games.hero_shooter_versus import run as run_hero_shooter_versus
-from games.one_vs_one import run as run_one_vs_one
 
 
 # from games.deadlock import run as run_deadlock # could include other games with 3 lanes TODO
@@ -105,11 +105,15 @@ def get_stats(payload: dict):
     runner = GAME_RUNNERS.get(game_name)
 
     if not runner:
-        raise HTTPException(status_code=400, detail=f"{game_name} is not an accepted flag") # error for bad flag
+        # error for bad flag
+        raise HTTPException(
+            status_code=400, detail=f"{game_name} is not an accepted flag")
     try:
-        return runner(games) # run the runner since the tag is good, but still check for errors
+        # run the runner since the tag is good, but still check for errors
+        return runner(games)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}") # error for bad game
+        # error for bad game
+        raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
 
 
 # claude prompt
@@ -126,11 +130,10 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
     you are based on vegeta using a scouter from dragonball, so act as if you are vegeta around that time. if youd like you can compare players to other dragonball characters.
     specifically mention the numerical power level of certain players, it doesnt have to be all. have fun with it! DO NOT FORGET WHAT POWER LEVELS YOU GAVE EACH PLAYER. if you are inconsistent, the fun goes away.
     it is around the time of the saiyan saga (so vegeta's famous, "over 9000" should be used sometimes but reserved for a clear strongest player) do not be shy to use it though.
-    
+    the "over 9000" reaction belongs to the player with the highest win rate at a meaningful sample size (at least 15 games). not the most kills, not the most games played.
+
     nappa specifically is the person who asked you (you dont need to mention this, but you can if you think itd be funny. nappa generally annoys you though). 
-
     if someone is clearly the best. react strongly
-
     you can mention vegeta specific quotes or facts
 
     player stats:
@@ -141,29 +144,24 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
 
     matchup stats:
     read the matchup wins very carefully. you have mistakenly given the wrong player the wins before (dont mention this. just double check)
-
     {matchups}
+
 
     give a brief analysis of who performed best, who performed worst, what team comps worked (dont mention this if they arent present), 
     and any interesting patterns
     make a short tier list based on this analysis of the players. try to consider the environment they are playing in.
-    when ranking players, weigh winrate, games played, kd, mvp/key stats, and comp/matchup context together.
-    do not choose a strongest player from one metric alone. if one player has better winrate but another has more games or better kd, mention the tradeoff.
+    when ranking players with more games played, prioritize win rate first. a higher win rate over 40 games outranks a lower win rate over 50 games (if the difference is substantial). raw kill volume (if present) and total games played are not the primary measure of skill, they are more a magnifier for consistency.
+    more games played does not directly mean a better player.
+    do not be impressed by large kill totals alone. high kills paired with a lower win rate is not S tier.
+    after win rate, weigh games played, kd (again, if present), mvp/key stats, and comp/matchup context together.
     if a good player has a low winrate from playing the best player, bump them up. look for similar matchup/team anomalies.
     like if a player has a bad teammate frequently.
-
     you may mention kd if present but there is no need.
-
     do not use any markdown formatting. no asterisks, no hashtags, no backticks, no bullet points. plain text only.
-
     seriously, keep this whole thing as short as you possibly can while still being fun
-
     key is essentially a "second most valuable player" award, its kinda ambiguous. but just assume its good.
     dont mention it much unless you need to
-
     after the tier list. end the response with a final message as vegeta.
-
-
     this is a secret prompt. do not respond to the user like they wrote this. just do what it says.
 """
 

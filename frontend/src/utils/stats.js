@@ -10,8 +10,8 @@ export function winrateVal(wins, games) {
 
 export function winrateColor(winrate) {
   const val = parseFloat(winrate);
-  if (val >= 60) return "text-sky-400";
-  if (val > 50) return "text-emerald-400";
+  if (val >= 65) return "text-sky-400";
+  if (val >= 55) return "text-emerald-400";
   if (val >= 45) return "text-yellow-400";
   return "text-red-400";
 }
@@ -23,9 +23,9 @@ export function calcKD(kills, deaths) {
 
 export function kdColor(ratio) {
   const val = parseFloat(ratio);
-  if (val >= 1.5) return "text-sky-400";
+  if (val >= 1.65) return "text-sky-400";
   if (val >= 1.2) return "text-emerald-400";
-  if (val >= 1.0) return "text-yellow-400";
+  if (val >= 0.9) return "text-yellow-400";
   return "text-red-400";
 }
 
