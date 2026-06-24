@@ -16,9 +16,17 @@ import {
   readMinGamesSetting,
   winrateVal,
 } from "./utils/stats";
+import {
+  readStoredNumber,
+  usePersistedElementHeight,
+} from "./hooks/usePersistedElementSize";
 import { supabase } from "./supabaseClient";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const PASTE_INPUT_HEIGHT_KEY = "pasteInputHeight";
+const EASY_INPUT_HEIGHT_KEY = "easyInputHeight";
+const SIDEBAR_WIDTH_KEY = "sidebarWidth";
+
 export default function App() {
   const [mode, setMode] = useState("paste");
   const [data, setData] = useState(null);
@@ -38,9 +46,22 @@ export default function App() {
   );
 
   // sidebar resize
-  const [sidebarWidth, setSidebarWidth] = useState(320);
+  const [sidebarWidth, setSidebarWidth] = useState(() =>
+    readStoredNumber(SIDEBAR_WIDTH_KEY, 320, 240, 640),
+  );
   const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 1024);
   const isResizingRef = useRef(false);
+  const pasteInputRef = useRef(null);
+  const easyInputRef = useRef(null);
+  const [pasteInputHeight] = useState(() =>
+    readStoredNumber(PASTE_INPUT_HEIGHT_KEY, 176, 176),
+  );
+  const [easyInputHeight] = useState(() =>
+    readStoredNumber(EASY_INPUT_HEIGHT_KEY, 176, 176),
+  );
+
+  usePersistedElementHeight(pasteInputRef, PASTE_INPUT_HEIGHT_KEY, mode);
+  usePersistedElementHeight(easyInputRef, EASY_INPUT_HEIGHT_KEY, mode);
 
   useEffect(() => {
     const check = () => setIsDesktop(window.innerWidth >= 1024);
@@ -65,6 +86,10 @@ export default function App() {
       document.removeEventListener("mouseup", onMouseUp);
     };
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_WIDTH_KEY, String(sidebarWidth));
+  }, [sidebarWidth]);
 
   function startResize(e) {
     isResizingRef.current = true;
@@ -565,14 +590,20 @@ export default function App() {
 
             {mode === "paste" ? (
               <textarea
+                ref={pasteInputRef}
                 className="w-full min-h-44 bg-zinc-700 border border-zinc-500 text-zinc-200 text-xs p-3 focus:outline-none focus:border-amber-400/40 resize-y"
                 rows={11}
+                style={{ height: pasteInputHeight }}
                 placeholder="Paste your game data here..."
                 value={pasteInput}
                 onChange={(e) => setPasteInput(e.target.value)}
               />
             ) : (
-              <div className="min-h-44 max-h-[70vh] overflow-auto resize-y border border-zinc-500 p-3 bg-zinc-700">
+              <div
+                ref={easyInputRef}
+                className="min-h-44 max-h-[70vh] overflow-auto resize-y border border-zinc-500 p-3 bg-zinc-700"
+                style={{ height: easyInputHeight }}
+              >
                 <input
                   className="w-full bg-zinc-600 border border-zinc-500 text-zinc-200 text-xs p-2 mb-3 focus:outline-none focus:border-amber-400/40"
                   placeholder="Game tag (e.g. one_vs_one)"
