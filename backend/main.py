@@ -64,50 +64,6 @@ GAME_RUNNERS = {
 }
 
 
-def get_message_text(message):
-    return "".join(
-        block.text
-        for block in message.content
-        if getattr(block, "type", None) == "text"
-    ).strip()
-
-
-def parse_ranking_response(text, players):
-    try:
-        ranking = json.loads(text)
-    except json.JSONDecodeError:
-        start = text.find("{")
-        end = text.rfind("}")
-        if start == -1 or end == -1 or end <= start:
-            raise
-        ranking = json.loads(text[start:end + 1])
-
-    if not isinstance(ranking, dict):
-        raise ValueError("Ranking response must be a JSON object")
-
-    ranked = ranking.get("ranked", [])
-    player_names = list(players.keys())
-    known_players = set(player_names)
-    normalized_ranked = [
-        name
-        for name in ranked
-        if isinstance(name, str) and name in known_players
-    ]
-    normalized_ranked.extend(
-        name for name in player_names if name not in normalized_ranked
-    )
-
-    over_9000 = ranking.get("over_9000", False)
-    if isinstance(over_9000, str):
-        over_9000 = over_9000.strip().lower() == "true"
-
-    return {
-        "ranked": normalized_ranked,
-        "over_9000": bool(over_9000),
-        "reasoning": str(ranking.get("reasoning", "")).strip(),
-    }
-
-
 def is_usage_limit_error(error):
     return "specified API usage limits" in str(error)
 
@@ -179,103 +135,45 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
     comps = data.get("comp_stats", {})
     matchups = data.get("matchup_stats", {})
 
-    ranking_prompt = f"""
+    vegeta_prompt = f"""
+        Analyze the stats silently, then answer only as Saiyan Saga Vegeta reading a scouter.
+        Plain text only. No headers, tags, markdown, or JSON. Asterisks only for short actions.
+        Keep it short enough for a phone screen. Do not user asterisks to stylize things, just actions.
 
-        HARD RULE: If player A has strictly higher win rate AND strictly higher K/D than 
-        player B, player A MUST rank above player B. No other factor can override this.
+        First, silently rank every player strongest to weakest. HARD RULE: if player A has
+        higher win rate AND higher K/D than player B, A must rank above B.
+        Rank by: win rate first; K/D ratio second, with terrible K/D around 0.60 or lower
+        heavily punished; matchups; MVP rate; role/key rates; small sample skepticism;
+        comp context only as flavor or leeway for a strong player dragged by weak teams.
+        More games never means stronger.
 
-        Rank these players strongest to weakest. Output ONLY a JSON object, nothing else.
-        Priorities in order:
-        1. Win rate (primary)
-        2. K/D ratio, a vastly higher kd is worth a lot, a horrible KD detracts a lot. ONLY THE RATIO MATTERS. NOT VOLUME OF KILLS AND DEATHS. Truly awful KDs like .6 and below suggest carrying, detract heavily.
-        3. Matchup data (if a good player loses often to the best player, note that, and give that player a bump)
-        4. MVP rate if present
-        5. Role/key rates
-        6. Sample size is a SKEPTICISM modifier. It can reduce confidence in stats but 
-            NEVER boosts a player's rank, it can decrease rank though. compare with other players and see if its a lot less, if so, lower them a bit. 
-            More games does not mean stronger.
-        7. Comp context (good player dragged by bad teammates gets leeway)
+        Power levels must strictly follow your final rank order. Give #1 the phrase "over 9000" only if
+        they clearly beat #2 by a meaningful margin across the factors; otherwise cap at 8500. If they are deserving of 9000, say the line in character such as: "WHAT IT'S OVER 9000!"
+        Make sure that you never give a power level that is literally over 9000, like 9100. Only the phrase may be used.
+        When a power level is over 9000, add more detail to that players blurb.
+        Read win rate rounded to 1 decimal and K/D rounded to 2 decimals.
 
-        Also output over_9000: true if #1 is clearly ahead of #2 across these factors by a meaningful margin.
+        Vegeta voice: speak about the players like they are not here, compare them to
+        Saibamen, Raditz, Nappa (if you are choosing to speak to Nappa, then refer to him directly), Zarbon, Krillin, Piccolo, Kakarot, Frieza, etc.
+        If #1 is over 9000, sound impressed, angry, or uneasy. Pretend you are reading the
+        power level at the start of each individual blurb. So react accordingly as if you didn't know it already.
 
-        Return format:
-        {{"ranked": ["name1", "name2", "..."], "over_9000": true, "reasoning": "one sentence"}}
-
-        Winrate should only ever be read to 1 decimal point (rounded).
-        KD should only ever be read to 2 decimal point (rounded).
+        Output in this order:
+        1. Brief opening remark.
+        2. Each player exactly once, highest to lowest, with power level and short stat reason.
+        3. Simple S-F tier list, skip E, omit empty tiers, players highest to lowest.
+        4. Brief Vegeta-like closing remark dependent on results, optionally to Nappa.
 
         Stats: {players}
         Matchups: {matchups}
         Comps: {comps}
-    """
-
-    def build_vegeta_prompt(ranking):
-        ranked_list = "\n".join(
-            f"{index}. {name}"
-            for index, name in enumerate(ranking["ranked"], start=1)
-        )
-        over_9000_instruction = (
-            "#1 is OVER 9000. Show genuine unease at their power."
-            if ranking["over_9000"]
-            else "Nobody reaches OVER 9000. Cap at 8500."
-        )
-
-        return f"""
-        You are Vegeta from Dragon Ball, specifically during the Saiyan Saga (SO DO NOT MENTION YOURSELF AS IF YOU ARE TALKING ABOUT VEGETA, you can of course say "i am vegeta, the prince of all saiyans"). This means that you are much weaker than Frieza, but stronger than all Earthling characters except Kakarot.
-        You are analyzing a group of friends' statistics. Speak about them as if they are not here. You are using your scouter to measure their power. Plain text only, asterisks can be used for actions though. Keep it short enough for a small phone screen; really stick to this. The first thing to shorten would be the individual analyses.
-
-        do not use headers or anything like that, and dont decorate things with asterisks. only use them for actions
-
-        Players in EXACT order, do not change, READ THEM OUT IN THE EXACT ORDER:
-        {ranked_list}
-
-        {over_9000_instruction}
-
-        The ranking is already decided by the analyst. Do not re-rank players, even if the stats tempt you. Power levels must match rank order strictly. Higher rank means higher power level, always.
-
-        Winrate should only ever be read to 1 decimal point (rounded).
-        KD should only ever be read to 2 decimal point (rounded).
-
-
-        Use the analyst's reasoning for flavor:
-        {ranking["reasoning"]}
-
-        Use the stats themselves to look at individual matchups and comps that are noteworthy:
-        Stats: {players}
-        Matchups: {matchups}
-        Comps: {comps}
-
-        React like Vegeta, do not format your output with headers or tags, you are speaking casually. Compare players to Saibamen, Raditz, Nappa, Zarbon, Krillin, Piccolo, Kakarot, Frieza, or whatever fits based on strength. 
-        If #1 is over 9000, sound genuinely impressed, or angry, or scared, depends on the level of dominance to the other players.
-
-        also pretend that you are just now reading the power level as you say them, even though you are technically getting them from the analyst. so act surprised if its warranted.
-
-        Comp stats show team chemistry, not individual rank. Use comps and matchups only to explain funny context, excuses, grudges, carry jobs, or suspicious stat quirks.
-
-        Write in this order:
-        1. An opening remark as Vegeta.
-        2. React to each player individually with their power level. Go highest to lowest. Every player must appear exactly once. Give a short reason for each using the stats. Make an interesting observation or two based on stats too, keep it short.
-        3. A simple tier list S-F (ALWAYS SKIP E), remove tiers that are not needed. List players highest to lowest within each tier. One short line per player explaining why.
-        4. A closing remark as Vegeta, you could talk to Nappa here if you'd like
-
-
     """
 
     def stream():
         try:
-            ranking_message = client.messages.create(
-                model=ANTHROPIC_MODEL,
-                max_tokens=450,
-                temperature=0,
-                messages=[{"role": "user", "content": ranking_prompt}]
-            )
-            ranking = parse_ranking_response(
-                get_message_text(ranking_message), players)
-            vegeta_prompt = build_vegeta_prompt(ranking)
-
             with client.messages.stream(
                 model=ANTHROPIC_MODEL,
-                max_tokens=650,
+                max_tokens=700,
                 messages=[{"role": "user", "content": vegeta_prompt}]
             ) as stream:
                 for text in stream.text_stream:
