@@ -27,6 +27,7 @@ const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 const PASTE_INPUT_HEIGHT_KEY = "pasteInputHeight";
 const EASY_INPUT_HEIGHT_KEY = "easyInputHeight";
 const SIDEBAR_WIDTH_KEY = "sidebarWidth";
+const ANALYSIS_MODE_KEY = "analysisMode";
 
 async function readResponseError(res, fallbackMessage) {
   const text = await res.text();
@@ -62,6 +63,9 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [analysis, setAnalysis] = useState(null);
+  const [analysisMode, setAnalysisMode] = useState(
+    () => localStorage.getItem(ANALYSIS_MODE_KEY) || "vegeta",
+  );
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [playerMinGames, setPlayerMinGames] = useState(() =>
     readMinGamesSetting("playerMinGames"),
@@ -241,7 +245,16 @@ export default function App() {
   }, [matchupMinGames]);
   useEffect(() => {
     setAnalysis(null);
-  }, [playerMinGames, compMinGames, roleCompMinGames, matchupMinGames]);
+  }, [
+    analysisMode,
+    playerMinGames,
+    compMinGames,
+    roleCompMinGames,
+    matchupMinGames,
+  ]);
+  useEffect(() => {
+    localStorage.setItem(ANALYSIS_MODE_KEY, analysisMode);
+  }, [analysisMode]);
 
   useEffect(() => {
     function onKey(e) {
@@ -368,7 +381,10 @@ export default function App() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ data: filteredAnalysisData }),
+        body: JSON.stringify({
+          data: filteredAnalysisData,
+          analysis_mode: analysisMode,
+        }),
       });
       if (!res.ok) {
         throw new Error(await readResponseError(res, "Scouter failed"));
@@ -759,17 +775,30 @@ export default function App() {
                   <span className="text-zinc-100 text-xs uppercase tracking-widest">
                     Scouter
                   </span>
-                  <button
-                    onClick={runScouter}
-                    disabled={analysisLoading || !session}
-                    className="px-3 py-1 bg-zinc-700 hover:bg-zinc-600 text-white text-xs disabled:opacity-50"
-                  >
-                    {analysisLoading
-                      ? "Scanning..."
-                      : session
-                        ? "Run Scouter"
-                        : "Sign in required"}
-                  </button>
+                  <div className="flex gap-2">
+                    <select
+                      value={analysisMode}
+                      onChange={(e) => setAnalysisMode(e.target.value)}
+                      disabled={analysisLoading}
+                      className="bg-zinc-700 border border-zinc-500 text-zinc-100 text-xs px-2 py-1 focus:outline-none focus:border-amber-400/40 disabled:opacity-50"
+                    >
+                      <option value="vegeta">Vegeta</option>
+                      <option value="patterns">Patterns</option>
+                    </select>
+                    <button
+                      onClick={runScouter}
+                      disabled={analysisLoading || !session}
+                      className="px-3 py-1 bg-zinc-700 hover:bg-zinc-600 text-white text-xs disabled:opacity-50"
+                    >
+                      {analysisLoading
+                        ? "Scanning..."
+                        : session
+                          ? analysisMode === "patterns"
+                            ? "Run Patterns"
+                            : "Run Scouter"
+                          : "Sign in required"}
+                    </button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 mb-3">
                   <MinGamesInput
@@ -802,7 +831,9 @@ export default function App() {
                   </p>
                 ) : (
                   <p className="text-zinc-400 text-xs">
-                    Vegeta! What does the scouter say about his power level?
+                    {analysisMode === "patterns"
+                      ? "Find patterns in your data."
+                      : "Vegeta! What does the scouter say about his power level?"}
                   </p>
                 )}
               </div>

@@ -133,12 +133,15 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
     # build a readable summary of the stats to feed the model
     players = data.get("player_stats", {})
     comps = data.get("comp_stats", {})
+    role_comps = data.get("role_comp_stats", {})
+    role_labels = data.get("role_labels", {})
     matchups = data.get("matchup_stats", {})
+    analysis_mode = payload.get("analysis_mode", "vegeta")
 
     vegeta_prompt = f"""
         Analyze the stats silently, then answer only as Saiyan Saga Vegeta reading a scouter.
         Plain text only. No headers, tags, markdown, or JSON. Asterisks only for short actions.
-        Keep it short enough for a phone screen. Do not user asterisks to stylize things, just actions.
+        Keep it short enough for a phone screen. Do not use asterisks to stylize things, just actions.
 
         First, silently rank every player strongest to weakest. HARD RULE: if player A has
         higher win rate AND higher K/D than player B, A must rank above B.
@@ -148,8 +151,8 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
         More games never means stronger.
 
         Power levels must strictly follow your final rank order. Give #1 the phrase "over 9000" only if
-        they clearly beat #2 by a meaningful margin across the factors; otherwise cap at 8500. If they are deserving of 9000, say the line in character such as: "WHAT IT'S OVER 9000!"
-        Make sure that you never give a power level that is literally over 9000, like 9100. Only the phrase may be used.
+        they clearly beat #2 by a moderate margin across the factors (like say one player has a 50 percent winrate, and another is at 60. this is a clear case to use over 9000); otherwise cap at 8500. If they are deserving of 9000, say the line in character such as: "WHAT IT'S OVER 9000!"
+        Make sure that you never give a power level that is literally over 9000, you just have to say that it's over 9000, no number may be specified.
         When a power level is over 9000, add more detail to that players blurb.
         Read win rate rounded to 1 decimal and K/D rounded to 2 decimals.
 
@@ -167,14 +170,49 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
         Stats: {players}
         Matchups: {matchups}
         Comps: {comps}
+        Role comps: {role_comps}
+        Role labels: {role_labels}
     """
+
+    patterns_prompt = f"""
+        You are analyzing game stats for a friend group. Plain raw text only.
+        Do not roleplay, do not make a tier list, and do not rank players strongest to weakest.
+        Be concise but specific; prioritize real patterns over generic advice.
+
+        Find patterns, synergies, anti-synergies, matchup trends, role patterns,
+        outliers, mvp and key patterns, and practical takeaways. Mention sample-size caveats when needed.
+        Use comps and role comps to identify strong/weak team chemistry and role fit.
+        Use matchups to spot players who counter, struggle against, or distort each other.
+        Only suggest theoretical best teams or experiments when the stats actually support them.
+
+        Do not overuse hashtags or asterisks
+
+        Cover:
+        - Biggest patterns
+        - Best and worst proven comps (only mention if present)
+        - Role fit patterns (only mention if present)
+        - Matchup patterns (only mention if present)
+        - Suspicious outliers or caveats (only mention if present)
+        - Practical experiments to try
+        - Provide suggestions if possible
+
+        At the end, mention your number 1 biggest takeaway
+
+        Stats: {players}
+        Matchups: {matchups}
+        Comps: {comps}
+        Role comps: {role_comps}
+        Role labels: {role_labels}
+    """
+
+    prompt = patterns_prompt if analysis_mode == "patterns" else vegeta_prompt
 
     def stream():
         try:
             with client.messages.stream(
                 model=ANTHROPIC_MODEL,
-                max_tokens=700,
-                messages=[{"role": "user", "content": vegeta_prompt}]
+                max_tokens=700 if analysis_mode == "patterns" else 650,
+                messages=[{"role": "user", "content": prompt}]
             ) as stream:
                 for text in stream.text_stream:
                     yield text
@@ -182,7 +220,7 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
             if is_usage_limit_error(e):
                 yield usage_limit_message()
                 return
-            yield "The Scouter malfunctioned. Try again in a bit."
+            yield "GRAH. Blasted scouter is dead... Try again next month weakling."
 
     return StreamingResponse(
         stream(),
