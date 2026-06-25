@@ -142,6 +142,7 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
         Analyze the stats silently, then answer only as Saiyan Saga Vegeta reading a scouter.
         Plain text only. No headers, tags, markdown, or JSON. Asterisks only for short actions.
         Keep it short enough for a phone screen. Do not use asterisks to stylize things, just actions.
+        Don't be scared to put multiple players in the same tier if they are similar, no need to use all possible tiers if it's not warranted.
 
         First, silently rank every player strongest to weakest. HARD RULE: if player A has
         higher win rate AND higher K/D than player B, A must rank above B.
