@@ -151,6 +151,8 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
         comp context only as flavor or leeway for a strong player dragged by weak teams.
         More games never means stronger.
 
+        When printing out the rankings, print exclusively in highest power level to lowest power level.
+
         Power levels must strictly follow your final rank order. Give #1 the phrase "over 9000" only if
         they clearly beat #2 by a moderate margin across the factors (like say one player has a 50 percent winrate, and another is at 60. this is a clear case to use over 9000); otherwise cap at 8500. If they are deserving of 9000, say the line in character such as: "WHAT IT'S OVER 9000!"
         Make sure that you never give a power level that is literally over 9000, you just have to say that it's over 9000, no number may be specified.
