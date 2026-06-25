@@ -30,13 +30,28 @@ const SIDEBAR_WIDTH_KEY = "sidebarWidth";
 
 async function readResponseError(res, fallbackMessage) {
   const text = await res.text();
-  if (!text) return fallbackMessage;
+  const responseLabel = `${fallbackMessage} (${res.status} ${res.statusText})`;
+  if (!text) return responseLabel;
 
   try {
     const parsed = JSON.parse(text);
-    return parsed.detail || parsed.message || fallbackMessage;
+    return parsed.detail || parsed.message || responseLabel;
   } catch {
-    return `${fallbackMessage}: ${text.slice(0, 300)}`;
+    const contentType = res.headers.get("content-type") || "unknown content type";
+    return `${responseLabel}: ${contentType} ${text.slice(0, 300)}`;
+  }
+}
+
+function readStoredGames() {
+  const saved = localStorage.getItem("games");
+  if (!saved) return [];
+
+  try {
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    localStorage.removeItem("games");
+    return [];
   }
 }
 
@@ -120,10 +135,7 @@ export default function App() {
   const [gameTag, setGameTag] = useState(
     () => localStorage.getItem("gameTag") || "",
   );
-  const [games, setGames] = useState(() => {
-    const saved = localStorage.getItem("games");
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [games, setGames] = useState(readStoredGames);
   const [currentLine, setCurrentLine] = useState("");
   const [session, setSession] = useState(null);
   const [authMode, setAuthMode] = useState("signIn");

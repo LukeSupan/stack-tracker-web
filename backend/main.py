@@ -108,6 +108,14 @@ def parse_ranking_response(text, players):
     }
 
 
+def is_usage_limit_error(error):
+    return "specified API usage limits" in str(error)
+
+
+def usage_limit_message():
+    return "My monthly AI credits are used up. The Scouter will be back next month!"
+
+
 def require_user(authorization: str | None = Header(default=None)):
     if not SUPABASE_URL or not SUPABASE_ANON_KEY:
         raise HTTPException(status_code=500, detail="Auth is not configured")
@@ -211,6 +219,11 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
         ranking = parse_ranking_response(
             get_message_text(ranking_message), players)
     except Exception as e:
+        if is_usage_limit_error(e):
+            raise HTTPException(
+                status_code=429,
+                detail=usage_limit_message()
+            )
         raise HTTPException(
             status_code=502,
             detail=f"Could not rank players: {str(e)}"
@@ -268,12 +281,18 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
     """
 
     def stream():
-        with client.messages.stream(
-            model=ANTHROPIC_MODEL,
-            max_tokens=650,
-            messages=[{"role": "user", "content": vegeta_prompt}]
-        ) as stream:
-            for text in stream.text_stream:
-                yield text
+        try:
+            with client.messages.stream(
+                model=ANTHROPIC_MODEL,
+                max_tokens=650,
+                messages=[{"role": "user", "content": vegeta_prompt}]
+            ) as stream:
+                for text in stream.text_stream:
+                    yield text
+        except Exception as e:
+            if is_usage_limit_error(e):
+                yield usage_limit_message()
+                return
+            yield "The Scouter malfunctioned. Try again in a bit."
 
     return StreamingResponse(stream(), media_type="text/plain")
