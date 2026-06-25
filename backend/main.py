@@ -182,22 +182,20 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
         Do not roleplay, do not make a tier list, and do not rank players strongest to weakest.
         Be concise but specific; prioritize real patterns over generic advice.
 
-        Find patterns, synergies, anti-synergies, matchup trends, role patterns,
-        outliers, mvp and key patterns, and practical takeaways. Mention sample-size caveats when needed.
-        Use comps and role comps to identify strong/weak team chemistry and role fit.
-        Use matchups to spot players who counter, struggle against, or distort each other.
-        Only suggest theoretical best teams or experiments when the stats actually support them.
-
         Do not overuse hashtags or asterisks
 
+        Double check each time you use the data that you interpretted it correctly, matchups and winrates are important to get exactly right.
+        You can use KD to 2 decimal places, and winrate to 1 decimal place.
+
+        Lower values for KD is worse, higher values are better.
+
+        DO NOT MAKE CLAIMS WITHOUT DATA BACKING IT UP. NO MATTER WHAT. BE EXTREMELY CAREFUL ABOUT THIS.
+
+        No matter what, keep it short enough to fit on a small phone screen.
         Cover:
-        - Biggest patterns
-        - Best and worst proven comps (only mention if present)
-        - Role fit patterns (only mention if present)
+        - Biggest patterns in anything
         - Matchup patterns (only mention if present)
-        - Suspicious outliers or caveats (only mention if present)
         - Practical experiments to try
-        - Provide suggestions if possible
 
         At the end, mention your number 1 biggest takeaway
 
@@ -214,7 +212,7 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
         try:
             with client.messages.stream(
                 model=ANTHROPIC_MODEL,
-                max_tokens=700 if analysis_mode == "patterns" else 650,
+                max_tokens=775 if analysis_mode == "patterns" else 650,
                 messages=[{"role": "user", "content": prompt}]
             ) as stream:
                 for text in stream.text_stream:
