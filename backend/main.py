@@ -209,37 +209,18 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
         Comps: {comps}
     """
 
-    try:
-        ranking_message = client.messages.create(
-            model=ANTHROPIC_MODEL,
-            max_tokens=450,
-            temperature=0,
-            messages=[{"role": "user", "content": ranking_prompt}]
+    def build_vegeta_prompt(ranking):
+        ranked_list = "\n".join(
+            f"{index}. {name}"
+            for index, name in enumerate(ranking["ranked"], start=1)
         )
-        ranking = parse_ranking_response(
-            get_message_text(ranking_message), players)
-    except Exception as e:
-        if is_usage_limit_error(e):
-            raise HTTPException(
-                status_code=429,
-                detail=usage_limit_message()
-            )
-        raise HTTPException(
-            status_code=502,
-            detail=f"Could not rank players: {str(e)}"
+        over_9000_instruction = (
+            "#1 is OVER 9000. Show genuine unease at their power."
+            if ranking["over_9000"]
+            else "Nobody reaches OVER 9000. Cap at 8500."
         )
 
-    ranked_list = "\n".join(
-        f"{index}. {name}"
-        for index, name in enumerate(ranking["ranked"], start=1)
-    )
-    over_9000_instruction = (
-        "#1 is OVER 9000. Show genuine unease at their power."
-        if ranking["over_9000"]
-        else "Nobody reaches OVER 9000. Cap at 8500."
-    )
-
-    vegeta_prompt = f"""
+        return f"""
         You are Vegeta from Dragon Ball, specifically during the Saiyan Saga (SO DO NOT MENTION YOURSELF AS IF YOU ARE TALKING ABOUT VEGETA, you can of course say "i am vegeta, the prince of all saiyans"). This means that you are much weaker than Frieza, but stronger than all Earthling characters except Kakarot.
         You are analyzing a group of friends' statistics. Speak about them as if they are not here. You are using your scouter to measure their power. Plain text only, asterisks can be used for actions though. Keep it short enough for a small phone screen; really stick to this. The first thing to shorten would be the individual analyses.
 
@@ -282,6 +263,16 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
 
     def stream():
         try:
+            ranking_message = client.messages.create(
+                model=ANTHROPIC_MODEL,
+                max_tokens=450,
+                temperature=0,
+                messages=[{"role": "user", "content": ranking_prompt}]
+            )
+            ranking = parse_ranking_response(
+                get_message_text(ranking_message), players)
+            vegeta_prompt = build_vegeta_prompt(ranking)
+
             with client.messages.stream(
                 model=ANTHROPIC_MODEL,
                 max_tokens=650,
@@ -295,4 +286,11 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
                 return
             yield "The Scouter malfunctioned. Try again in a bit."
 
-    return StreamingResponse(stream(), media_type="text/plain")
+    return StreamingResponse(
+        stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
