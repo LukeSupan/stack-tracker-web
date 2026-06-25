@@ -179,7 +179,7 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
         Rank these players strongest to weakest. Output ONLY a JSON object, nothing else.
         Priorities in order:
         1. Win rate (primary)
-        2. K/D ratio, a vastly higher kd is worth a lot, a horrible KD detracts a lot. ONLY THE RATIO MATTERS. NOT VOLUME OF KILLS AND DEATHS.
+        2. K/D ratio, a vastly higher kd is worth a lot, a horrible KD detracts a lot. ONLY THE RATIO MATTERS. NOT VOLUME OF KILLS AND DEATHS. Truly awful KDs like .6 and below suggest carrying, detract heavily.
         3. Matchup data (if a good player loses often to the best player, note that, and give that player a bump)
         4. MVP rate if present
         5. Role/key rates
