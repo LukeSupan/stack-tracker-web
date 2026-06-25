@@ -28,6 +28,18 @@ const PASTE_INPUT_HEIGHT_KEY = "pasteInputHeight";
 const EASY_INPUT_HEIGHT_KEY = "easyInputHeight";
 const SIDEBAR_WIDTH_KEY = "sidebarWidth";
 
+async function readResponseError(res, fallbackMessage) {
+  const text = await res.text();
+  if (!text) return fallbackMessage;
+
+  try {
+    const parsed = JSON.parse(text);
+    return parsed.detail || parsed.message || fallbackMessage;
+  } catch {
+    return `${fallbackMessage}: ${text.slice(0, 300)}`;
+  }
+}
+
 export default function App() {
   const [mode, setMode] = useState("paste");
   const [data, setData] = useState(null);
@@ -301,8 +313,7 @@ export default function App() {
         body: JSON.stringify({ lines }),
       });
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || "Something went wrong");
+        throw new Error(await readResponseError(res, "Something went wrong"));
       }
       setData(await res.json());
       await autoUpdateActiveSaveContent(submittedContent);
@@ -348,14 +359,7 @@ export default function App() {
         body: JSON.stringify({ data: filteredAnalysisData }),
       });
       if (!res.ok) {
-        let errorMessage = "Scouter failed";
-        try {
-          const err = await res.json();
-          errorMessage = err.detail || errorMessage;
-        } catch {
-          errorMessage = (await res.text()) || errorMessage;
-        }
-        throw new Error(errorMessage);
+        throw new Error(await readResponseError(res, "Scouter failed"));
       }
 
       if (!res.body) {
