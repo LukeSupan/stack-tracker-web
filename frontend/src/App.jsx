@@ -29,6 +29,20 @@ const EASY_INPUT_HEIGHT_KEY = "easyInputHeight";
 const SIDEBAR_WIDTH_KEY = "sidebarWidth";
 const ANALYSIS_MODE_KEY = "analysisMode";
 
+function passwordResetRedirectUrl() {
+  return `${window.location.origin}${window.location.pathname}`;
+}
+
+function urlHasPasswordRecoveryToken() {
+  const searchParams = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  return searchParams.get("type") === "recovery" || hashParams.get("type") === "recovery";
+}
+
+function cleanAuthUrl() {
+  window.history.replaceState(null, "", passwordResetRedirectUrl());
+}
+
 async function readResponseError(res, fallbackMessage) {
   const text = await res.text();
   const responseLabel = `${fallbackMessage} (${res.status} ${res.statusText})`;
@@ -185,12 +199,23 @@ export default function App() {
     supabase.auth.getSession().then(({ data: sessionData }) => {
       if (!mounted) return;
       setSession(sessionData.session);
+      if (urlHasPasswordRecoveryToken()) {
+        setAuthMode("updatePassword");
+        setAuthMessage("Enter a new password for your account.");
+        setAuthError("");
+      }
       setAuthLoading(false);
     });
 
     const { data: listenerData } = supabase.auth.onAuthStateChange(
       (authEvent, currentSession) => {
         setSession(currentSession);
+        if (authEvent === "PASSWORD_RECOVERY") {
+          setAuthMode("updatePassword");
+          setAuthPassword("");
+          setAuthMessage("Enter a new password for your account.");
+          setAuthError("");
+        }
         if (authEvent === "SIGNED_OUT") {
           setSaves([]);
           setActiveSaveId(null);
@@ -426,6 +451,29 @@ export default function App() {
     try {
       const email = authEmail.trim();
       const password = authPassword;
+
+      if (authMode === "forgotPassword") {
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+          email,
+          { redirectTo: passwordResetRedirectUrl() },
+        );
+        if (resetError) throw resetError;
+        setAuthMessage("Check your email for a password reset link.");
+        return;
+      }
+
+      if (authMode === "updatePassword") {
+        const { error: updateError } = await supabase.auth.updateUser({
+          password,
+        });
+        if (updateError) throw updateError;
+        setAuthMessage("Password updated.");
+        setAuthPassword("");
+        setAuthMode("signIn");
+        cleanAuthUrl();
+        return;
+      }
+
       const authResponse =
         authMode === "signIn"
           ? await supabase.auth.signInWithPassword({ email, password })
@@ -622,6 +670,7 @@ export default function App() {
   const visibleRoleComps = sortedRoleComps();
   const visibleMatchups = sortedMatchups();
   const visiblePlayerKDAverage = averagePlayerKD(visiblePlayers);
+  const showingPasswordResetPanel = authMode === "updatePassword";
 
   return (
     <div
@@ -725,7 +774,7 @@ export default function App() {
             </button>
             {error && <p className="text-red-400 text-xs mt-2">{error}</p>}
 
-            {session ? (
+            {session && !showingPasswordResetPanel ? (
               <SavesPanel
                 userEmail={session.user.email}
                 saves={saves}
