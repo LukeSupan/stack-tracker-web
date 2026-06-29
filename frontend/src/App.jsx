@@ -938,7 +938,7 @@ export default function App() {
             </Section>
 
             <Section title="Player Stats">
-              <div className="flex flex-wrap gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
                 {visiblePlayers.length > 0 ? (
                   visiblePlayers.map(([name, player]) => (
                     <PlayerCard

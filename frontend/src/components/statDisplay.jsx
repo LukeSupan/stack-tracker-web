@@ -7,10 +7,12 @@ import {
 
 function StatRow({ label, value, highlight }) {
   return (
-    <div className="flex justify-between py-0.5 text-sm">
+    <div className="flex justify-between gap-2 py-0.5 text-xs sm:text-sm">
       <span className="text-zinc-100">{label}</span>
       <span
-        className={highlight ? "text-amber-400 font-semibold" : "text-zinc-100"}
+        className={`shrink-0 ${
+          highlight ? "text-amber-400 font-semibold" : "text-zinc-100"
+        }`}
       >
         {value}
       </span>
@@ -27,9 +29,11 @@ export function PlayerCard({ name, player, kdAverage }) {
   const kdRatio = calcKD(player.kills, player.deaths);
 
   return (
-    <div className="border border-zinc-500 p-4 w-52 bg-zinc-700">
-      <div className="flex justify-between mb-2 pb-2 border-b border-zinc-500">
-        <span className="font-bold text-white text-base">{name}</span>
+    <div className="min-w-0 border border-zinc-500 p-3 sm:p-4 w-full sm:w-52 bg-zinc-700">
+      <div className="flex justify-between gap-2 mb-2 pb-2 border-b border-zinc-500">
+        <span className="min-w-0 break-words font-bold text-white text-sm sm:text-base">
+          {name}
+        </span>
         <span className={`text-sm font-semibold ${winrateColor(winrate)}`}>
           {winrate}
         </span>
