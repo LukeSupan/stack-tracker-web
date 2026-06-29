@@ -70,8 +70,20 @@ function readStoredGames() {
   }
 }
 
+function readInitialInputMode() {
+  const savedMode = localStorage.getItem("inputMode");
+  if (savedMode === "paste" || savedMode === "easy") return savedMode;
+
+  const hasPastedInput = Boolean(localStorage.getItem("pasteInput")?.trim());
+  const hasEasyInput =
+    Boolean(localStorage.getItem("gameTag")?.trim()) || readStoredGames().length > 0;
+
+  if (window.innerWidth < 640 && (!hasPastedInput || hasEasyInput)) return "easy";
+  return "paste";
+}
+
 export default function App() {
-  const [mode, setMode] = useState("paste");
+  const [mode, setMode] = useState(readInitialInputMode);
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -102,6 +114,8 @@ export default function App() {
   const isResizingRef = useRef(false);
   const pasteInputRef = useRef(null);
   const easyInputRef = useRef(null);
+  const currentLineRef = useRef(null);
+  const easyGamesEndRef = useRef(null);
   const [pasteInputHeight] = useState(() =>
     readStoredNumber(PASTE_INPUT_HEIGHT_KEY, 176, 176),
   );
@@ -139,6 +153,9 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, String(sidebarWidth));
   }, [sidebarWidth]);
+  useEffect(() => {
+    localStorage.setItem("inputMode", mode);
+  }, [mode]);
 
   function startResize(e) {
     isResizingRef.current = true;
@@ -246,6 +263,11 @@ export default function App() {
     localStorage.setItem("games", JSON.stringify(games));
   }, [games]);
   useEffect(() => {
+    if (mode === "easy") {
+      easyGamesEndRef.current?.scrollIntoView({ block: "nearest" });
+    }
+  }, [games.length, mode]);
+  useEffect(() => {
     if (playerMinGames !== "") {
       localStorage.setItem("playerMinGames", String(minGamesValue(playerMinGames)));
     }
@@ -339,9 +361,11 @@ export default function App() {
     setError(null);
   }
   function addGame() {
-    if (!currentLine.trim()) return;
-    setGames((prev) => [...prev, currentLine.trim()]);
+    const trimmedLine = currentLine.trim();
+    if (!trimmedLine) return;
+    setGames((previousGames) => [...previousGames, trimmedLine]);
     setCurrentLine("");
+    window.setTimeout(() => currentLineRef.current?.focus(), 0);
   }
   function handleKeyDown(e) {
     if (e.key === "Enter") {
@@ -671,6 +695,12 @@ export default function App() {
   const visibleMatchups = sortedMatchups();
   const visiblePlayerKDAverage = averagePlayerKD(visiblePlayers);
   const showingPasswordResetPanel = authMode === "updatePassword";
+  const pasteInputStyle = {
+    height: isDesktop ? pasteInputHeight : "min(42svh, 320px)",
+  };
+  const easyInputStyle = {
+    height: isDesktop ? easyInputHeight : "min(58svh, 440px)",
+  };
 
   return (
     <div
@@ -683,10 +713,10 @@ export default function App() {
       <div className="flex flex-col lg:flex-row min-h-screen">
         {/* Input panel — full width on mobile, resizable sidebar on desktop */}
         <div
-          className="w-full lg:shrink-0 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto p-6 lg:p-8"
+          className="w-full lg:shrink-0 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto p-4 sm:p-6 lg:p-8"
           style={isDesktop ? { width: sidebarWidth } : undefined}
         >
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
             <h1 className="text-xl font-bold text-white tracking-tight">
               Power Level
             </h1>
@@ -699,15 +729,15 @@ export default function App() {
           </div>
 
           <div>
-            <div className="flex gap-2 mb-3 items-center">
+            <div className="grid grid-cols-1 gap-2 mb-3 sm:flex sm:items-center">
               <button
                 onClick={toggleMode}
-                className="px-3 py-1 text-xs bg-zinc-600 hover:bg-zinc-500 text-zinc-400"
+                className="min-h-11 px-3 py-2 text-sm sm:min-h-0 sm:py-1 sm:text-xs bg-zinc-600 hover:bg-zinc-500 text-zinc-200 sm:text-zinc-400"
               >
                 {mode === "paste" ? "→ Easy Input" : "→ Copy Paste"}
               </button>
               {gameCount > 0 && (
-                <span className="text-zinc-400 text-xs">
+                <span className="text-zinc-400 text-xs text-center sm:text-left">
                   {gameCount} game{gameCount !== 1 ? "s" : ""}
                 </span>
               )}
@@ -716,9 +746,9 @@ export default function App() {
             {mode === "paste" ? (
               <textarea
                 ref={pasteInputRef}
-                className="w-full min-h-44 bg-zinc-700 border border-zinc-500 text-zinc-200 text-xs p-3 focus:outline-none focus:border-amber-400/40 resize-y"
+                className="w-full min-h-64 sm:min-h-44 bg-zinc-700 border border-zinc-500 text-zinc-200 text-sm sm:text-xs p-3 focus:outline-none focus:border-amber-400/40 resize-none sm:resize-y"
                 rows={11}
-                style={{ height: pasteInputHeight }}
+                style={pasteInputStyle}
                 placeholder="Paste your game data here..."
                 value={pasteInput}
                 onChange={(e) => setPasteInput(e.target.value)}
@@ -726,38 +756,57 @@ export default function App() {
             ) : (
               <div
                 ref={easyInputRef}
-                className="min-h-44 max-h-[70vh] overflow-auto resize-y border border-zinc-500 p-3 bg-zinc-700"
-                style={{ height: easyInputHeight }}
+                className="min-h-80 sm:min-h-44 max-h-[62svh] sm:max-h-[70vh] resize-none sm:resize-y overflow-hidden border border-zinc-500 p-3 bg-zinc-700 flex flex-col"
+                style={easyInputStyle}
               >
                 <input
-                  className="w-full bg-zinc-600 border border-zinc-500 text-zinc-200 text-xs p-2 mb-3 focus:outline-none focus:border-amber-400/40"
+                  className="w-full min-h-11 shrink-0 bg-zinc-600 border border-zinc-500 text-zinc-200 text-sm sm:text-xs p-2 mb-3 focus:outline-none focus:border-amber-400/40"
                   placeholder="Game tag (e.g. one_vs_one)"
                   value={gameTag}
                   onChange={(e) => setGameTag(e.target.value)}
+                  autoCapitalize="none"
                 />
-                {games.length > 0 && (
-                  <div className="mb-3 max-h-40 overflow-y-auto">
-                    {games.map((game, i) => (
-                      <div
-                        key={i}
-                        className="text-zinc-400 text-xs py-0.5 border-b border-zinc-600 last:border-0"
-                      >
-                        {game}
+                <div className="flex-1 min-h-0 overflow-y-auto mb-3">
+                  {games.length > 0 ? (
+                    <>
+                      {games.map((game, i) => (
+                        <div
+                          key={i}
+                          className="text-zinc-300 sm:text-zinc-400 text-sm sm:text-xs py-2 sm:py-0.5 border-b border-zinc-600 last:border-0"
+                        >
+                          {game}
+                        </div>
+                      ))}
+                      <div ref={easyGamesEndRef} />
+                    </>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-center px-6">
+                      <div>
+                        <p className="text-zinc-300 text-sm">
+                          Ready for quick entry.
+                        </p>
+                        <p className="text-zinc-500 text-xs mt-1">
+                          Add each finished game below.
+                        </p>
                       </div>
-                    ))}
-                  </div>
-                )}
-                <div className="flex gap-2">
+                    </div>
+                  )}
+                </div>
+                <div className="flex shrink-0 gap-2">
                   <input
-                    className="flex-1 bg-zinc-600 border border-zinc-500 text-zinc-200 text-xs p-2 focus:outline-none focus:border-amber-400/40"
+                    ref={currentLineRef}
+                    className="min-w-0 min-h-11 flex-1 bg-zinc-600 border border-zinc-500 text-zinc-200 text-sm sm:text-xs p-2 focus:outline-none focus:border-amber-400/40"
                     placeholder="Add a game line..."
                     value={currentLine}
                     onChange={(e) => setCurrentLine(e.target.value)}
                     onKeyDown={handleKeyDown}
+                    autoComplete="off"
+                    spellCheck={false}
                   />
                   <button
+                    type="button"
                     onClick={addGame}
-                    className="px-3 py-2 bg-zinc-700 hover:bg-zinc-600 text-white text-xs"
+                    className="min-h-11 px-4 py-2 bg-zinc-800 sm:bg-zinc-700 hover:bg-zinc-600 text-white text-sm sm:text-xs"
                   >
                     Add
                   </button>
@@ -768,7 +817,7 @@ export default function App() {
             <button
               onClick={submitData}
               disabled={loading}
-              className="mt-3 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs disabled:opacity-50"
+              className="mt-3 min-h-11 w-full sm:w-auto px-4 py-2 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-sm sm:text-xs disabled:opacity-50"
             >
               {loading ? "Loading..." : "Submit"}
             </button>
@@ -889,7 +938,7 @@ export default function App() {
             </Section>
 
             <Section title="Player Stats">
-              <div className="flex flex-wrap gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
                 {visiblePlayers.length > 0 ? (
                   visiblePlayers.map(([name, player]) => (
                     <PlayerCard
