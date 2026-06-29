@@ -3,11 +3,6 @@ const HOW_TO_USE = `STACK TRACKER FOR WEB
 This is intended to be used socially; if you are hardcore about your specific stats, there are online trackers that do this better. This specifically tracks individual stats overall and role-based, stats for specific teams, stats for role specific teams, and matchups between you and others in games where you play each other.
 
 ─────────────────────────────────────
-IMPORTANT NOTICE
-─────────────────────────────────────
-Keep a .txt file or some other place to store your games. Do not attempt to use the site to save the games, this doesn't work. You need it local.
-
-─────────────────────────────────────
 SUPPORTED TAGS
 ─────────────────────────────────────
   hero_shooter         Tank/DPS/Support/Result

@@ -5,18 +5,14 @@ This tracks:
 - Individual stats overall and role-based
 - Stats for specific teams
 - Stats for role specific teams
-- Matchups between you and others in games where you play each other (Rocket League or custom Overwatch games)
+- Matchups between you and others in games where you play each other (Rocket League or custom Overwatch games for example)
 
-Then you can have Vegeta analyze the stats, make a tier list, and point out interesting outliers in the data.
+Then you can have Vegeta, or the Patterns scouter, analyze the stats, make a tier list, and point out interesting outliers in the data.
 
 ---
 
 
 ## Match Entry Formatting:
-### IMPORTANT NOTICE:
-Keep a .txt file or some other place to store your games. The site will remember your input in local storage, but keeping it safe locally is best.
-
-
 ### General Formatting
 Your first line should always be a tag. There are currently a few supported tags. If you want more, message me and I'll add them as soon as I see it:
 - hero_shooter -> Tank/DPS/Support/Result
@@ -60,4 +56,3 @@ none/mar,kayla(key)/win
 luke,mar/none/win
 luke,mar/aiden,ray,kayla,dalton/win
 ```
-
