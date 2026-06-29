@@ -726,28 +726,30 @@ export default function App() {
             ) : (
               <div
                 ref={easyInputRef}
-                className="min-h-44 max-h-[70vh] overflow-auto resize-y border border-zinc-500 p-3 bg-zinc-700"
+                className="min-h-44 max-h-[70vh] resize-y overflow-hidden border border-zinc-500 p-3 bg-zinc-700 flex flex-col"
                 style={{ height: easyInputHeight }}
               >
                 <input
-                  className="w-full bg-zinc-600 border border-zinc-500 text-zinc-200 text-xs p-2 mb-3 focus:outline-none focus:border-amber-400/40"
+                  className="w-full shrink-0 bg-zinc-600 border border-zinc-500 text-zinc-200 text-xs p-2 mb-3 focus:outline-none focus:border-amber-400/40"
                   placeholder="Game tag (e.g. one_vs_one)"
                   value={gameTag}
                   onChange={(e) => setGameTag(e.target.value)}
                 />
-                {games.length > 0 && (
-                  <div className="mb-3 max-h-40 overflow-y-auto">
-                    {games.map((game, i) => (
+                <div className="flex-1 min-h-0 overflow-y-auto mb-3">
+                  {games.length > 0 ? (
+                    games.map((game, i) => (
                       <div
                         key={i}
                         className="text-zinc-400 text-xs py-0.5 border-b border-zinc-600 last:border-0"
                       >
                         {game}
                       </div>
-                    ))}
-                  </div>
-                )}
-                <div className="flex gap-2">
+                    ))
+                  ) : (
+                    <p className="text-zinc-500 text-xs">No games added yet.</p>
+                  )}
+                </div>
+                <div className="flex shrink-0 gap-2">
                   <input
                     className="flex-1 bg-zinc-600 border border-zinc-500 text-zinc-200 text-xs p-2 focus:outline-none focus:border-amber-400/40"
                     placeholder="Add a game line..."
