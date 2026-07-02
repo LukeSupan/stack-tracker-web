@@ -23,7 +23,7 @@ load_dotenv()
 app = FastAPI()  # create FastAPI app
 
 client = anthropic.Anthropic()  # reads api key
-ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5")
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 FRONTEND_ORIGINS = [
