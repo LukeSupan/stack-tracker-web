@@ -16,6 +16,28 @@ export function winrateColor(winrate) {
   return "text-red-400";
 }
 
+export function volumeRatio(value, maxValue) {
+  const max = Number(maxValue) || 0;
+  if (max <= 0) return 0;
+  return (Number(value) || 0) / max;
+}
+
+export function volumeColor(value, maxValue) {
+  const ratio = volumeRatio(value, maxValue);
+  if (ratio >= 0.85) return "text-sky-400";
+  if (ratio >= 0.55) return "text-emerald-400";
+  if (ratio >= 0.25) return "text-yellow-400";
+  return "text-red-400";
+}
+
+export function volumeBgColor(value, maxValue) {
+  const ratio = volumeRatio(value, maxValue);
+  if (ratio >= 0.85) return "bg-sky-400";
+  if (ratio >= 0.55) return "bg-emerald-400";
+  if (ratio >= 0.25) return "bg-yellow-400";
+  return "bg-red-400";
+}
+
 export function kdValue(kills, deaths) {
   if (deaths === 0) return kills > 0 ? kills : 0;
   return kills / deaths;

@@ -23,6 +23,7 @@ import {
   kdValue,
   minGamesValue,
   readMinGamesSetting,
+  volumeBgColor,
   winrateVal,
 } from "./utils/stats";
 import {
@@ -38,11 +39,14 @@ const SIDEBAR_WIDTH_KEY = "sidebarWidth";
 const ANALYSIS_MODE_KEY = "analysisMode";
 const RESULTS_VIEW_MODE_KEY = "resultsViewMode";
 
-function playerBarClass(entry, sortKey) {
+function playerBarClass(entry, sortKey, maxValue) {
   if (sortKey === "kd") {
     return kdBarColor(entry.kd);
   }
   if (sortKey === "mvpRate") return "bg-amber-400";
+  if (sortKey === "games" || sortKey === "wins") {
+    return volumeBgColor(entry[sortKey] || 0, maxValue);
+  }
   if (entry.winPct >= 65) return "bg-sky-400";
   if (entry.winPct >= 55) return "bg-emerald-400";
   if (entry.winPct >= 45) return "bg-yellow-400";
@@ -94,12 +98,7 @@ function readInitialInputMode() {
   const savedMode = localStorage.getItem("inputMode");
   if (savedMode === "paste" || savedMode === "easy") return savedMode;
 
-  const hasPastedInput = Boolean(localStorage.getItem("pasteInput")?.trim());
-  const hasEasyInput =
-    Boolean(localStorage.getItem("gameTag")?.trim()) || readStoredGames().length > 0;
-
-  if (window.innerWidth < 640 && (!hasPastedInput || hasEasyInput)) return "easy";
-  return "paste";
+  return "easy";
 }
 
 export default function App() {
@@ -381,7 +380,6 @@ export default function App() {
     setGameTag(lines[0] || "");
     setGames(lines.slice(1));
     setCurrentLine("");
-    setMode("paste");
     setData(null);
     setAnalysis(null);
     setError(null);

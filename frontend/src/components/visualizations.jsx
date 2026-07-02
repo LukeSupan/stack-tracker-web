@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from "react";
-import { calcWinrate, winrateColor } from "../utils/stats";
+import { calcWinrate, volumeBgColor, volumeColor, winrateColor } from "../utils/stats";
 
 const SORT_OPTIONS = [
   { key: "games", label: "Games" },
@@ -26,6 +26,13 @@ function winrateBgClass(winPct) {
   return "bg-red-400";
 }
 
+function defaultBarClass(entry, sortKey, maxValue) {
+  if (sortKey === "games" || sortKey === "wins") {
+    return volumeBgColor(metricValue(entry, sortKey), maxValue);
+  }
+  return winrateBgClass(entry.winPct);
+}
+
 function metricValue(entry, sortKey) {
   if (sortKey === "winPct") return entry.winPct || 0;
   return entry[sortKey] || 0;
@@ -35,6 +42,16 @@ function formatMetricValue(value, sortKey) {
   if (sortKey === "winPct" || sortKey === "mvpRate") return formatPct(value);
   if (sortKey === "kd") return Number(value || 0).toFixed(2);
   return value;
+}
+
+function metricTextClass(entry, sortKey, maxValue) {
+  if (sortKey === "games" || sortKey === "wins") {
+    return volumeColor(metricValue(entry, sortKey), maxValue);
+  }
+  if (sortKey === "winPct") {
+    return winrateColor(formatPct(entry.winPct));
+  }
+  return "text-zinc-300";
 }
 
 function layoutScatterLabels(points) {
@@ -90,7 +107,7 @@ export function RankedBarChart({
   title = "Ranked chart",
   emptyMessage = "No stats meet the current cutoff.",
   sortOptions = SORT_OPTIONS,
-  getBarClass = (entry) => winrateBgClass(entry.winPct),
+  getBarClass = defaultBarClass,
 }) {
   const [sortKey, setSortKey] = useState(sortOptions[0]?.key || "games");
   const activeSortKey = sortOptions.some((option) => option.key === sortKey)
@@ -110,6 +127,8 @@ export function RankedBarChart({
     activeSortKey === "winPct" || activeSortKey === "mvpRate"
       ? 100
       : Math.max(1, ...rankedEntries.map((entry) => metricValue(entry, activeSortKey)));
+  const maxGames = Math.max(1, ...rankedEntries.map((entry) => entry.games || 0));
+  const maxWins = Math.max(1, ...rankedEntries.map((entry) => entry.wins || 0));
 
   if (rankedEntries.length === 0) {
     return <p className="text-zinc-400 text-sm">{emptyMessage}</p>;
@@ -121,9 +140,6 @@ export function RankedBarChart({
         <div>
           <div className="text-xs uppercase tracking-widest text-zinc-400">
             {title}
-          </div>
-          <div className="text-[11px] text-zinc-500">
-            Sorted by games by default.
           </div>
         </div>
         <div className="flex gap-1 border border-zinc-600 bg-zinc-800 p-1">
@@ -161,9 +177,14 @@ export function RankedBarChart({
                     <span>
                       <span className={winrateColor(winrate)}>{winrate}</span>
                       {"  "}
-                      {entry.wins}W / {entry.losses}L
+                      <span className={volumeColor(entry.wins, maxWins)}>
+                        {entry.wins}W
+                      </span>{" "}
+                      / {entry.losses}L
                     </span>
-                    <span>{entry.games} games</span>
+                    <span className={volumeColor(entry.games, maxGames)}>
+                      {entry.games} games
+                    </span>
                     {(entry.kills || entry.deaths) > 0 && (
                       <span>{Number(entry.kd || 0).toFixed(2)} K/D</span>
                     )}
@@ -176,13 +197,19 @@ export function RankedBarChart({
                     <RecentFormStrip form={entry.form} />
                   </div>
                 </div>
-                <span className="shrink-0 text-sm text-zinc-300">
+                <span
+                  className={`shrink-0 text-sm font-semibold ${metricTextClass(
+                    entry,
+                    activeSortKey,
+                    maxValue,
+                  )}`}
+                >
                   {formatMetricValue(value, activeSortKey)}
                 </span>
               </div>
               <div className="h-3 overflow-hidden bg-zinc-800">
                 <div
-                  className={`h-full ${getBarClass(entry, activeSortKey)}`}
+                  className={`h-full ${getBarClass(entry, activeSortKey, maxValue)}`}
                   style={{ width: `${width}%` }}
                 />
               </div>
@@ -262,7 +289,7 @@ export function KDScatterPlot({ entries, minGames = 0 }) {
           K/D map
         </div>
         <div className="text-[11px] text-zinc-500">
-          Average deaths per game on X, average kills per game on Y. Diagonal is even K/D.
+          Deaths/game on X, kills/game on Y. Dot size is games played; color represents winrate.
         </div>
       </div>
       <svg viewBox="0 0 300 300" role="img" className="h-auto w-full">
@@ -476,7 +503,9 @@ export function MatchupVisualization({ matchups, minGames = 0 }) {
             Matchup view
           </div>
           <div className="text-[11px] text-zinc-500">
-            Bars show each side's share of wins.
+            {view === "matrix"
+              ? "Cells show the row team's winrate against the column team."
+              : "Green shows the side with the larger share of wins."}
           </div>
         </div>
         {teams.length >= 4 && (
@@ -525,36 +554,44 @@ function MatchupTugBar({ matchup, data }) {
   const rightWins = data.wins?.[rightTeam] || 0;
   const leftPct = data.games ? (leftWins / data.games) * 100 : 0;
   const rightPct = data.games ? (rightWins / data.games) * 100 : 0;
+  const greenSide =
+    leftWins >= rightWins
+      ? { team: leftTeam, wins: leftWins, pct: leftPct }
+      : { team: rightTeam, wins: rightWins, pct: rightPct };
+  const redSide =
+    leftWins >= rightWins
+      ? { team: rightTeam, wins: rightWins, pct: rightPct }
+      : { team: leftTeam, wins: leftWins, pct: leftPct };
 
   return (
     <div>
       <div className="mb-1 grid grid-cols-[1fr_auto_1fr] items-end gap-2 text-xs">
-        <div className="min-w-0 break-words text-zinc-100">{cleanLabel(leftTeam)}</div>
+        <div className="min-w-0 break-words text-zinc-100">{cleanLabel(greenSide.team)}</div>
         <div className="text-center text-[11px] text-zinc-400">
           {data.games} games
         </div>
         <div className="min-w-0 break-words text-right text-zinc-100">
-          {cleanLabel(rightTeam)}
+          {cleanLabel(redSide.team)}
         </div>
       </div>
       <div className="flex h-3 overflow-hidden bg-zinc-800">
         <div
           className="bg-emerald-400"
-          style={{ width: `${leftPct}%` }}
-          title={`${cleanLabel(leftTeam)} ${formatPct(leftPct)}`}
+          style={{ width: `${greenSide.pct}%` }}
+          title={`${cleanLabel(greenSide.team)} ${formatPct(greenSide.pct)}`}
         />
         <div
           className="bg-red-400"
-          style={{ width: `${rightPct}%` }}
-          title={`${cleanLabel(rightTeam)} ${formatPct(rightPct)}`}
+          style={{ width: `${redSide.pct}%` }}
+          title={`${cleanLabel(redSide.team)} ${formatPct(redSide.pct)}`}
         />
       </div>
       <div className="mt-1 flex justify-between text-[11px] text-zinc-400">
         <span>
-          {leftWins}W - {formatPct(leftPct)}
+          {greenSide.wins}W - {formatPct(greenSide.pct)}
         </span>
         <span>
-          {rightWins}W - {formatPct(rightPct)}
+          {redSide.wins}W - {formatPct(redSide.pct)}
         </span>
       </div>
     </div>
