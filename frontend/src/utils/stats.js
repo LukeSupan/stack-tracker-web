@@ -16,6 +16,60 @@ export function winrateColor(winrate) {
   return "text-red-400";
 }
 
+export function kdValue(kills, deaths) {
+  if (deaths === 0) return kills > 0 ? kills : 0;
+  return kills / deaths;
+}
+
+export function calcKD(kills, deaths) {
+  const ratio = kdValue(kills, deaths);
+  if (deaths === 0) return ratio.toFixed(1);
+  return ratio.toFixed(2);
+}
+
+export function kdTier(ratio, averageRatio = 1) {
+  const val = parseFloat(ratio);
+  const average = Math.max(Number.parseFloat(averageRatio) || 1, 0.1);
+  if (val >= average * 1.35) return "great";
+  if (val >= average * 1.1) return "good";
+  if (val >= average * 0.85) return "ok";
+  return "bad";
+}
+
+export function kdTextColor(ratio, averageRatio = 1) {
+  const tier = kdTier(ratio, averageRatio);
+  if (tier === "great") return "text-sky-400";
+  if (tier === "good") return "text-emerald-400";
+  if (tier === "ok") return "text-yellow-400";
+  return "text-red-400";
+}
+
+export function kdBarColor(ratio, averageRatio = 1) {
+  const tier = kdTier(ratio, averageRatio);
+  if (tier === "great") return "bg-sky-400";
+  if (tier === "good") return "bg-emerald-400";
+  if (tier === "ok") return "bg-yellow-400";
+  return "bg-red-400";
+}
+
+export function kdColor(ratio, averageRatio = 1) {
+  return kdTextColor(ratio, averageRatio);
+}
+
+export function averagePlayerKD(players) {
+  const ratios = players
+    .map(([, player]) => {
+      if (!player || (player.kills || 0) === 0 || (player.deaths || 0) === 0) {
+        return null;
+      }
+      return kdValue(player.kills, player.deaths);
+    })
+    .filter((ratio) => ratio !== null);
+
+  if (ratios.length === 0) return 1;
+  return ratios.reduce((total, ratio) => total + ratio, 0) / ratios.length;
+}
+
 export function readMinGamesSetting(key) {
   const saved = localStorage.getItem(key);
   const parsed = Number.parseInt(saved || "1", 10);

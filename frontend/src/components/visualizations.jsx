@@ -37,6 +37,33 @@ function formatMetricValue(value, sortKey) {
   return value;
 }
 
+function layoutScatterLabels(points) {
+  const placed = [];
+  return points
+    .map((point, index) => ({ ...point, index }))
+    .sort((a, b) => a.cy - b.cy || a.cx - b.cx)
+    .map((point) => {
+      let labelX = point.cx + point.radius + 4;
+      let labelY = point.cy + 3;
+
+      for (let attempt = 0; attempt < 9; attempt += 1) {
+        const overlaps = placed.some(
+          (label) =>
+            Math.abs(label.x - labelX) < 42 && Math.abs(label.y - labelY) < 11,
+        );
+        if (!overlaps) break;
+        labelY += 11;
+        labelX += attempt % 2 === 0 ? 5 : -2;
+      }
+
+      labelX = clamp(labelX, 46, 262);
+      labelY = clamp(labelY, 48, 254);
+      placed.push({ x: labelX, y: labelY });
+      return { ...point, labelX, labelY };
+    })
+    .sort((a, b) => a.index - b.index);
+}
+
 export function RecentFormStrip({ form = [] }) {
   const recent = form.slice(-12);
   if (recent.length === 0) return null;
@@ -125,12 +152,12 @@ export function RankedBarChart({
 
           return (
             <div key={entry.id || entry.label}>
-              <div className="mb-1 flex items-start justify-between gap-3 text-xs">
+              <div className="mb-1.5 flex items-start justify-between gap-3 text-sm">
                 <div className="min-w-0">
-                  <div className="break-words font-semibold text-zinc-100">
+                  <div className="break-words text-sm font-bold text-zinc-100 sm:text-base">
                     {formatLabel(entry)}
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-400">
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-400">
                     <span>
                       <span className={winrateColor(winrate)}>{winrate}</span>
                       {"  "}
@@ -149,7 +176,7 @@ export function RankedBarChart({
                     <RecentFormStrip form={entry.form} />
                   </div>
                 </div>
-                <span className="shrink-0 text-zinc-300">
+                <span className="shrink-0 text-sm text-zinc-300">
                   {formatMetricValue(value, activeSortKey)}
                 </span>
               </div>
@@ -216,6 +243,17 @@ export function KDScatterPlot({ entries, minGames = 0 }) {
       labelY: y(endKills),
     };
   }
+  const labelPoints = layoutScatterLabels(
+    plottedWithAverages.map((entry) => {
+      const radius = 4 + ((entry.games || 0) / maxGames) * 8;
+      return {
+        ...entry,
+        cx: x(entry.deathsPerGame),
+        cy: y(entry.killsPerGame),
+        radius,
+      };
+    }),
+  );
 
   return (
     <div className="max-w-3xl border border-zinc-500 bg-zinc-700 p-3 sm:p-4">
@@ -309,14 +347,13 @@ export function KDScatterPlot({ entries, minGames = 0 }) {
             {tick.toFixed(1)}
           </text>
         ))}
-        {plottedWithAverages.map((entry) => {
-          const radius = 4 + ((entry.games || 0) / maxGames) * 8;
+        {labelPoints.map((entry) => {
           return (
             <g key={entry.id || entry.label}>
               <circle
-                cx={x(entry.deathsPerGame)}
-                cy={y(entry.killsPerGame)}
-                r={radius}
+                cx={entry.cx}
+                cy={entry.cy}
+                r={entry.radius}
                 fill={pointColor(entry.winPct)}
                 fillOpacity="0.78"
                 stroke="#18181b"
@@ -330,9 +367,17 @@ export function KDScatterPlot({ entries, minGames = 0 }) {
                   )}, ${entry.games} games`}
                 </title>
               </circle>
+              <line
+                x1={entry.cx + entry.radius}
+                y1={entry.cy}
+                x2={entry.labelX - 2}
+                y2={entry.labelY - 3}
+                stroke="#71717a"
+                strokeOpacity="0.35"
+              />
               <text
-                x={x(entry.deathsPerGame) + radius + 3}
-                y={y(entry.killsPerGame) + 3}
+                x={entry.labelX}
+                y={entry.labelY}
                 fill="#e4e4e7"
                 fontSize="9"
               >
