@@ -11,8 +11,16 @@ import {
   Section,
 } from "./components/statDisplay";
 import {
+  KDScatterPlot,
+  MatchupVisualization,
+  RankedBarChart,
+  RoleStatsChart,
+} from "./components/visualizations";
+import {
   averagePlayerKD,
   filterStatsByGames,
+  kdBarColor,
+  kdValue,
   minGamesValue,
   readMinGamesSetting,
   winrateVal,
@@ -28,6 +36,18 @@ const PASTE_INPUT_HEIGHT_KEY = "pasteInputHeight";
 const EASY_INPUT_HEIGHT_KEY = "easyInputHeight";
 const SIDEBAR_WIDTH_KEY = "sidebarWidth";
 const ANALYSIS_MODE_KEY = "analysisMode";
+const RESULTS_VIEW_MODE_KEY = "resultsViewMode";
+
+function playerBarClass(entry, sortKey) {
+  if (sortKey === "kd") {
+    return kdBarColor(entry.kd);
+  }
+  if (sortKey === "mvpRate") return "bg-amber-400";
+  if (entry.winPct >= 65) return "bg-sky-400";
+  if (entry.winPct >= 55) return "bg-emerald-400";
+  if (entry.winPct >= 45) return "bg-yellow-400";
+  return "bg-red-400";
+}
 
 function passwordResetRedirectUrl() {
   return `${window.location.origin}${window.location.pathname}`;
@@ -91,6 +111,9 @@ export default function App() {
   const [analysis, setAnalysis] = useState(null);
   const [analysisMode, setAnalysisMode] = useState(
     () => localStorage.getItem(ANALYSIS_MODE_KEY) || "vegeta",
+  );
+  const [resultsViewMode, setResultsViewMode] = useState(
+    () => localStorage.getItem(RESULTS_VIEW_MODE_KEY) || "default",
   );
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [playerMinGames, setPlayerMinGames] = useState(() =>
@@ -302,6 +325,9 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(ANALYSIS_MODE_KEY, analysisMode);
   }, [analysisMode]);
+  useEffect(() => {
+    localStorage.setItem(RESULTS_VIEW_MODE_KEY, resultsViewMode);
+  }, [resultsViewMode]);
 
   useEffect(() => {
     function onKey(e) {
@@ -689,11 +715,78 @@ export default function App() {
     ).sort(([, a], [, b]) => b.games - a.games);
   }
 
+  function rankedEntry(id, label, stats, extra = {}) {
+    return {
+      id,
+      label,
+      wins: stats.wins || 0,
+      losses: stats.losses || 0,
+      games: stats.games || 0,
+      winPct: winrateVal(stats.wins || 0, stats.games || 0),
+      form: stats.form || [],
+      ...extra,
+    };
+  }
+  function playerChartEntries() {
+    if (!data?.player_stats) return [];
+    return Object.entries(data.player_stats).map(([name, player]) =>
+      rankedEntry(name, name, player, {
+        kills: player.kills || 0,
+        deaths: player.deaths || 0,
+        kd: kdValue(player.kills || 0, player.deaths || 0),
+        mvps: player.mvps || 0,
+        mvpRate: winrateVal(player.mvps || 0, player.games || 0),
+      }),
+    );
+  }
+  function compChartEntries() {
+    if (!data?.comp_stats) return [];
+    return Object.entries(data.comp_stats).map(([comp, stats]) =>
+      rankedEntry(comp, comp.replaceAll(",", ", "), stats),
+    );
+  }
+  function roleCompChartEntries() {
+    if (!data?.role_comp_stats) return [];
+    return Object.entries(data.role_comp_stats).map(([comp, stats]) =>
+      rankedEntry(comp, comp, stats, {
+        parts: comp.split("/"),
+      }),
+    );
+  }
+  function formatRoleCompChartLabel(entry) {
+    return (
+      <div className="space-y-0.5">
+        {(data.role_labels || []).map((label, i) => (
+          <div key={label}>
+            <span className="text-zinc-400">{label}: </span>
+            {entry.parts?.[i] ? entry.parts[i].replaceAll(",", ", ") : "none"}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  const playerEntries = playerChartEntries();
   const visiblePlayers = sortedPlayers();
   const visibleComps = sortedComps();
   const visibleRoleComps = sortedRoleComps();
   const visibleMatchups = sortedMatchups();
   const visiblePlayerKDAverage = averagePlayerKD(visiblePlayers);
+  const playerHasKD = playerEntries.some(
+    (entry) => (entry.kills || 0) > 0 || (entry.deaths || 0) > 0,
+  );
+  const playerHasMVP = playerEntries.some((entry) => (entry.mvps || 0) > 0);
+  const playerSortOptions = [
+    { key: "games", label: "Games" },
+    { key: "winPct", label: "Win%" },
+    { key: "wins", label: "Wins" },
+    ...(playerHasKD ? [{ key: "kd", label: "K/D" }] : []),
+    ...(playerHasMVP ? [{ key: "mvpRate", label: "MVP%" }] : []),
+  ];
+  const compEntries = compChartEntries();
+  const roleCompEntries = roleCompChartEntries();
+  const hasRoleSpecificStats =
+    data?.role_labels?.some((role) => role !== "Player") && data?.player_stats;
   const showingPasswordResetPanel = authMode === "updatePassword";
   const pasteInputStyle = {
     height: isDesktop ? pasteInputHeight : "min(42svh, 320px)",
@@ -921,7 +1014,7 @@ export default function App() {
                   />
                 </div>
                 <p className="text-zinc-500 text-[11px] mb-3">
-                  These cutoffs filter visible stats and what Vegeta sees.
+                  These cutoffs filter visible stats and Scouter input.
                 </p>
                 {analysis ? (
                   <p className="text-zinc-100 text-sm leading-relaxed whitespace-pre-line">
@@ -937,80 +1030,169 @@ export default function App() {
               </div>
             </Section>
 
-            <Section title="Player Stats">
-              <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
-                {visiblePlayers.length > 0 ? (
-                  visiblePlayers.map(([name, player]) => (
-                    <PlayerCard
-                      key={name}
-                      name={name}
-                      player={player}
-                      kdAverage={visiblePlayerKDAverage}
-                    />
-                  ))
-                ) : (
-                  <p className="text-zinc-400 text-sm">
-                    No players meet the current cutoff.
-                  </p>
+            <div className="mb-8 flex gap-1 border border-zinc-600 bg-zinc-700 p-1 w-fit">
+              <button
+                type="button"
+                onClick={() => setResultsViewMode("default")}
+                className={`px-3 py-1 text-xs transition-colors ${
+                  resultsViewMode === "default"
+                    ? "bg-amber-500 text-zinc-950"
+                    : "text-zinc-300 hover:bg-zinc-600"
+                }`}
+              >
+                Default
+              </button>
+              <button
+                type="button"
+                onClick={() => setResultsViewMode("detailed")}
+                className={`px-3 py-1 text-xs transition-colors ${
+                  resultsViewMode === "detailed"
+                    ? "bg-amber-500 text-zinc-950"
+                    : "text-zinc-300 hover:bg-zinc-600"
+                }`}
+              >
+                Detailed
+              </button>
+            </div>
+
+            {resultsViewMode === "default" ? (
+              <>
+                <Section title="Player Stats">
+                  <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
+                    {visiblePlayers.length > 0 ? (
+                      visiblePlayers.map(([name, player]) => (
+                        <PlayerCard
+                          key={name}
+                          name={name}
+                          player={player}
+                          kdAverage={visiblePlayerKDAverage}
+                        />
+                      ))
+                    ) : (
+                      <p className="text-zinc-400 text-sm">
+                        No players meet the current cutoff.
+                      </p>
+                    )}
+                  </div>
+                </Section>
+
+                {data.comp_stats && (
+                  <Section title="Comp Stats">
+                    <div className="max-w-lg">
+                      {visibleComps.length > 0 ? (
+                        visibleComps.map(([comp, stats]) => (
+                          <CompRow key={comp} name={comp} stats={stats} />
+                        ))
+                      ) : (
+                        <p className="text-zinc-400 text-sm">
+                          No comps meet the current cutoff.
+                        </p>
+                      )}
+                    </div>
+                  </Section>
                 )}
-              </div>
-            </Section>
 
-            {data.comp_stats && (
-              <Section title="Comp Stats">
-                <div className="max-w-lg">
-                  {visibleComps.length > 0 ? (
-                    visibleComps.map(([comp, stats]) => (
-                      <CompRow key={comp} name={comp} stats={stats} />
-                    ))
-                  ) : (
-                    <p className="text-zinc-400 text-sm">
-                      No comps meet the current cutoff.
-                    </p>
-                  )}
-                </div>
-              </Section>
-            )}
+                {data.role_comp_stats && data.role_labels && (
+                  <Section title="Role Comp Stats">
+                    <div className="max-w-lg">
+                      {visibleRoleComps.length > 0 ? (
+                        visibleRoleComps.map(([comp, stats]) => (
+                          <RoleCompRow
+                            key={comp}
+                            name={comp}
+                            stats={stats}
+                            roleLabels={data.role_labels}
+                          />
+                        ))
+                      ) : (
+                        <p className="text-zinc-400 text-sm">
+                          No role comps meet the current cutoff.
+                        </p>
+                      )}
+                    </div>
+                  </Section>
+                )}
 
-            {data.role_comp_stats && data.role_labels && (
-              <Section title="Role Comp Stats">
-                <div className="max-w-lg">
-                  {visibleRoleComps.length > 0 ? (
-                    visibleRoleComps.map(([comp, stats]) => (
-                      <RoleCompRow
-                        key={comp}
-                        name={comp}
-                        stats={stats}
-                        roleLabels={data.role_labels}
+                {data.matchup_stats && (
+                  <Section title="Matchups">
+                    <div className="max-w-lg">
+                      {visibleMatchups.length > 0 ? (
+                        visibleMatchups.map(([matchup, matchupData]) => (
+                          <MatchupRow
+                            key={matchup}
+                            matchup={matchup}
+                            data={matchupData}
+                          />
+                        ))
+                      ) : (
+                        <p className="text-zinc-400 text-sm">
+                          No matchups meet the current cutoff.
+                        </p>
+                      )}
+                    </div>
+                  </Section>
+                )}
+              </>
+            ) : (
+              <>
+                <Section title="Player Stats">
+                  <div className="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
+                    <RankedBarChart
+                      entries={playerEntries}
+                      minGames={minGamesValue(playerMinGames)}
+                      title="Player ranking"
+                      sortOptions={playerSortOptions}
+                      getBarClass={playerBarClass}
+                    />
+                    <KDScatterPlot
+                      entries={playerEntries}
+                      minGames={minGamesValue(playerMinGames)}
+                    />
+                  </div>
+                </Section>
+
+                {hasRoleSpecificStats && (
+                  <Section title="Role Player Stats">
+                    <RoleStatsChart
+                      players={data.player_stats}
+                      roleLabels={data.role_labels}
+                      minGames={minGamesValue(playerMinGames)}
+                    />
+                  </Section>
+                )}
+
+                {data.comp_stats && (
+                  <Section title="Comp Stats">
+                    <RankedBarChart
+                      entries={compEntries}
+                      minGames={minGamesValue(compMinGames)}
+                      title="Comp ranking"
+                    />
+                  </Section>
+                )}
+
+                {data.role_comp_stats && data.role_labels && (
+                  <Section title="Role Comp Stats">
+                    <RankedBarChart
+                      entries={roleCompEntries}
+                      minGames={minGamesValue(roleCompMinGames)}
+                      formatLabel={formatRoleCompChartLabel}
+                      title="Role comp ranking"
+                    />
+                  </Section>
+                )}
+
+                {data.matchup_stats && (
+                  <Section title="Matchups">
+                    <div className="mb-6">
+                      <MatchupVisualization
+                        matchups={Object.entries(data.matchup_stats)}
+                        minGames={minGamesValue(matchupMinGames)}
                       />
-                    ))
-                  ) : (
-                    <p className="text-zinc-400 text-sm">
-                      No role comps meet the current cutoff.
-                    </p>
-                  )}
-                </div>
-              </Section>
-            )}
-
-            {data.matchup_stats && (
-              <Section title="Matchups">
-                <div className="max-w-lg">
-                  {visibleMatchups.length > 0 ? (
-                    visibleMatchups.map(([matchup, matchupData]) => (
-                      <MatchupRow
-                        key={matchup}
-                        matchup={matchup}
-                        data={matchupData}
-                      />
-                    ))
-                  ) : (
-                    <p className="text-zinc-400 text-sm">
-                      No matchups meet the current cutoff.
-                    </p>
-                  )}
-                </div>
-              </Section>
+                    </div>
+                  </Section>
+                )}
+              </>
             )}
           </div>
         )}

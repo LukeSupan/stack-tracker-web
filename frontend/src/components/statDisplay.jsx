@@ -1,7 +1,7 @@
 import {
   calcKD,
   calcWinrate,
-  kdColor,
+  kdTextColor,
   winrateColor,
 } from "../utils/stats";
 
@@ -54,7 +54,7 @@ export function PlayerCard({ name, player, kdAverage }) {
           <StatRow label="K / D" value={`${player.kills} / ${player.deaths}`} />
           <StatRow
             label="Ratio"
-            value={<span className={kdColor(kdRatio, kdAverage)}>{kdRatio}</span>}
+            value={<span className={kdTextColor(kdRatio, kdAverage)}>{kdRatio}</span>}
           />
         </>
       )}

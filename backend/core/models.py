@@ -12,6 +12,7 @@ def make_player(role_labels):
     return {
         # general stats
         "wins": 0, "losses": 0, "games": 0,
+        "form": [],
 
         # dynamic roles
         "roles": {
@@ -38,13 +39,15 @@ def make_player(role_labels):
 # comps that ignore roles
 def make_comp():
     return {
-        "wins": 0, "losses": 0, "games": 0
+        "wins": 0, "losses": 0, "games": 0,
+        "form": [],
     }
 
 # comps that are made unique by role placements
 def make_role_comp():
     return {
-        "wins": 0, "losses": 0, "games": 0
+        "wins": 0, "losses": 0, "games": 0,
+        "form": [],
     }
 
 # comps that ignore roles
