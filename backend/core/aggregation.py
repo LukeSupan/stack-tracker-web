@@ -4,6 +4,14 @@
 from core.parsing import parse_name_and_tags
 from core.utils import extract_players, get_role_comp_key
 
+
+def update_ordered_form(stats, result):
+    stats["form"].append("W" if result == "win" else "L")
+    stats["trend"].append({
+        "game": stats["games"],
+        "winPct": round((stats["wins"] / stats["games"]) * 100, 1) if stats["games"] else 0,
+    })
+
 # update the games values for each player on current team
 # does not return, updates player_stats directly
 # TODO add per role mvp stats, would be really cool, but probably bloated. but... so cool...
@@ -40,6 +48,8 @@ def update_player_stats(player_stats, team, result):
                 player_stats[name]["kills"] += kills
                 player_stats[name]["deaths"] += deaths
 
+            update_ordered_form(player_stats[name], result)
+
     return
 
 # update the game values for each player on current team (without roles)
@@ -70,6 +80,8 @@ def update_player_stats_generic(player_stats, team, result):
             player_stats[name]["kills"] += kills
             player_stats[name]["deaths"] += deaths
 
+        update_ordered_form(player_stats[name], result)
+
 
 
 # update the current team comp, not caring about roles
@@ -83,6 +95,8 @@ def update_comp_stats(comp_stats, team, result):
     else:
         comp_stats[comp_key]["losses"] += 1
 
+    update_ordered_form(comp_stats[comp_key], result)
+
     return
 
 # update the current team comp, its unique based on roes
@@ -95,6 +109,8 @@ def update_role_comp_stats(role_comp_stats, team, result, role_labels):
         role_comp_stats[role_comp_key]["wins"] += 1
     else:
         role_comp_stats[role_comp_key]["losses"] += 1
+
+    update_ordered_form(role_comp_stats[role_comp_key], result)
 
     return
 

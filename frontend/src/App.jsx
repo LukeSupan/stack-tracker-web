@@ -11,6 +11,12 @@ import {
   Section,
 } from "./components/statDisplay";
 import {
+  KDScatterPlot,
+  MatchupVisualization,
+  RankedBarChart,
+  TrendLineChart,
+} from "./components/visualizations";
+import {
   averagePlayerKD,
   filterStatsByGames,
   minGamesValue,
@@ -688,11 +694,62 @@ export default function App() {
       filterStatsByGames(data.matchup_stats, minGamesValue(matchupMinGames)),
     ).sort(([, a], [, b]) => b.games - a.games);
   }
+  function rankedEntry(id, label, stats, extra = {}) {
+    return {
+      id,
+      label,
+      wins: stats.wins || 0,
+      losses: stats.losses || 0,
+      games: stats.games || 0,
+      winPct: winrateVal(stats.wins || 0, stats.games || 0),
+      form: stats.form || [],
+      trend: stats.trend || [],
+      ...extra,
+    };
+  }
+  function playerChartEntries() {
+    if (!data?.player_stats) return [];
+    return Object.entries(data.player_stats).map(([name, player]) =>
+      rankedEntry(name, name, player, {
+        kills: player.kills || 0,
+        deaths: player.deaths || 0,
+      }),
+    );
+  }
+  function compChartEntries() {
+    if (!data?.comp_stats) return [];
+    return Object.entries(data.comp_stats).map(([comp, stats]) =>
+      rankedEntry(comp, comp.replaceAll(",", ", "), stats),
+    );
+  }
+  function roleCompChartEntries() {
+    if (!data?.role_comp_stats) return [];
+    return Object.entries(data.role_comp_stats).map(([comp, stats]) =>
+      rankedEntry(comp, comp, stats, {
+        parts: comp.split("/"),
+      }),
+    );
+  }
+  function formatRoleCompChartLabel(entry) {
+    return (
+      <div className="space-y-0.5">
+        {(data.role_labels || []).map((label, i) => (
+          <div key={label}>
+            <span className="text-zinc-400">{label}: </span>
+            {entry.parts?.[i] ? entry.parts[i].replaceAll(",", ", ") : "none"}
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   const visiblePlayers = sortedPlayers();
   const visibleComps = sortedComps();
   const visibleRoleComps = sortedRoleComps();
   const visibleMatchups = sortedMatchups();
+  const playerEntries = playerChartEntries();
+  const compEntries = compChartEntries();
+  const roleCompEntries = roleCompChartEntries();
   const visiblePlayerKDAverage = averagePlayerKD(visiblePlayers);
   const showingPasswordResetPanel = authMode === "updatePassword";
   const pasteInputStyle = {
@@ -921,7 +978,7 @@ export default function App() {
                   />
                 </div>
                 <p className="text-zinc-500 text-[11px] mb-3">
-                  These cutoffs filter visible stats and what Vegeta sees.
+                  These cutoffs filter cards and Scouter input; charts mute smaller samples.
                 </p>
                 {analysis ? (
                   <p className="text-zinc-100 text-sm leading-relaxed whitespace-pre-line">
@@ -938,6 +995,16 @@ export default function App() {
             </Section>
 
             <Section title="Player Stats">
+              <div className="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
+                <RankedBarChart
+                  entries={playerEntries}
+                  minGames={minGamesValue(playerMinGames)}
+                />
+                <KDScatterPlot entries={playerEntries} />
+                <div className="xl:col-span-2">
+                  <TrendLineChart entries={playerEntries} label="Player trend" />
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
                 {visiblePlayers.length > 0 ? (
                   visiblePlayers.map(([name, player]) => (
@@ -958,6 +1025,13 @@ export default function App() {
 
             {data.comp_stats && (
               <Section title="Comp Stats">
+                <div className="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
+                  <RankedBarChart
+                    entries={compEntries}
+                    minGames={minGamesValue(compMinGames)}
+                  />
+                  <TrendLineChart entries={compEntries} label="Comp trend" />
+                </div>
                 <div className="max-w-lg">
                   {visibleComps.length > 0 ? (
                     visibleComps.map(([comp, stats]) => (
@@ -974,6 +1048,13 @@ export default function App() {
 
             {data.role_comp_stats && data.role_labels && (
               <Section title="Role Comp Stats">
+                <div className="mb-6">
+                  <RankedBarChart
+                    entries={roleCompEntries}
+                    minGames={minGamesValue(roleCompMinGames)}
+                    formatLabel={formatRoleCompChartLabel}
+                  />
+                </div>
                 <div className="max-w-lg">
                   {visibleRoleComps.length > 0 ? (
                     visibleRoleComps.map(([comp, stats]) => (
@@ -995,6 +1076,12 @@ export default function App() {
 
             {data.matchup_stats && (
               <Section title="Matchups">
+                <div className="mb-6">
+                  <MatchupVisualization
+                    matchups={Object.entries(data.matchup_stats)}
+                    minGames={minGamesValue(matchupMinGames)}
+                  />
+                </div>
                 <div className="max-w-lg">
                   {visibleMatchups.length > 0 ? (
                     visibleMatchups.map(([matchup, matchupData]) => (
