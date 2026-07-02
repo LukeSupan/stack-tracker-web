@@ -7,10 +7,6 @@ from core.utils import extract_players, get_role_comp_key
 
 def update_ordered_form(stats, result):
     stats["form"].append("W" if result == "win" else "L")
-    stats["trend"].append({
-        "game": stats["games"],
-        "winPct": round((stats["wins"] / stats["games"]) * 100, 1) if stats["games"] else 0,
-    })
 
 # update the games values for each player on current team
 # does not return, updates player_stats directly
