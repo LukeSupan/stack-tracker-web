@@ -30,6 +30,20 @@ const EASY_INPUT_HEIGHT_KEY = "easyInputHeight";
 const SIDEBAR_WIDTH_KEY = "sidebarWidth";
 const ANALYSIS_MODE_KEY = "analysisMode";
 
+function playerBarClass(entry, sortKey) {
+  if (sortKey === "kd") {
+    if (entry.kd >= 1.4) return "bg-sky-400";
+    if (entry.kd >= 1.05) return "bg-emerald-400";
+    if (entry.kd >= 0.8) return "bg-yellow-400";
+    return "bg-red-400";
+  }
+  if (sortKey === "mvpRate") return "bg-amber-400";
+  if (entry.winPct >= 65) return "bg-sky-400";
+  if (entry.winPct >= 55) return "bg-emerald-400";
+  if (entry.winPct >= 45) return "bg-yellow-400";
+  return "bg-red-400";
+}
+
 function passwordResetRedirectUrl() {
   return `${window.location.origin}${window.location.pathname}`;
 }
@@ -674,6 +688,12 @@ export default function App() {
       rankedEntry(name, name, player, {
         kills: player.kills || 0,
         deaths: player.deaths || 0,
+        kd:
+          (player.deaths || 0) === 0
+            ? player.kills || 0
+            : (player.kills || 0) / player.deaths,
+        mvps: player.mvps || 0,
+        mvpRate: winrateVal(player.mvps || 0, player.games || 0),
       }),
     );
   }
@@ -705,6 +725,17 @@ export default function App() {
   }
 
   const playerEntries = playerChartEntries();
+  const playerHasKD = playerEntries.some(
+    (entry) => (entry.kills || 0) > 0 || (entry.deaths || 0) > 0,
+  );
+  const playerHasMVP = playerEntries.some((entry) => (entry.mvps || 0) > 0);
+  const playerSortOptions = [
+    { key: "games", label: "Games" },
+    { key: "winPct", label: "Win%" },
+    { key: "wins", label: "Wins" },
+    ...(playerHasKD ? [{ key: "kd", label: "K/D" }] : []),
+    ...(playerHasMVP ? [{ key: "mvpRate", label: "MVP%" }] : []),
+  ];
   const compEntries = compChartEntries();
   const roleCompEntries = roleCompChartEntries();
   const hasRoleSpecificStats =
@@ -958,6 +989,8 @@ export default function App() {
                   entries={playerEntries}
                   minGames={minGamesValue(playerMinGames)}
                   title="Player ranking"
+                  sortOptions={playerSortOptions}
+                  getBarClass={playerBarClass}
                 />
                 <KDScatterPlot
                   entries={playerEntries}

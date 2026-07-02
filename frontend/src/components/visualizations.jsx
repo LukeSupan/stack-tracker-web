@@ -31,6 +31,12 @@ function metricValue(entry, sortKey) {
   return entry[sortKey] || 0;
 }
 
+function formatMetricValue(value, sortKey) {
+  if (sortKey === "winPct" || sortKey === "mvpRate") return formatPct(value);
+  if (sortKey === "kd") return Number(value || 0).toFixed(2);
+  return value;
+}
+
 export function RecentFormStrip({ form = [] }) {
   const recent = form.slice(-12);
   if (recent.length === 0) return null;
@@ -56,22 +62,27 @@ export function RankedBarChart({
   formatLabel = (entry) => entry.label,
   title = "Ranked chart",
   emptyMessage = "No stats meet the current cutoff.",
+  sortOptions = SORT_OPTIONS,
+  getBarClass = (entry) => winrateBgClass(entry.winPct),
 }) {
-  const [sortKey, setSortKey] = useState("games");
+  const [sortKey, setSortKey] = useState(sortOptions[0]?.key || "games");
+  const activeSortKey = sortOptions.some((option) => option.key === sortKey)
+    ? sortKey
+    : sortOptions[0]?.key || "games";
   const rankedEntries = useMemo(() => {
     return entries.filter((entry) => (entry.games || 0) >= minGames).sort((a, b) => {
-      const primary = metricValue(b, sortKey) - metricValue(a, sortKey);
+      const primary = metricValue(b, activeSortKey) - metricValue(a, activeSortKey);
       if (primary !== 0) return primary;
       const games = (b.games || 0) - (a.games || 0);
       if (games !== 0) return games;
       return String(a.label).localeCompare(String(b.label));
     });
-  }, [entries, minGames, sortKey]);
+  }, [activeSortKey, entries, minGames]);
 
   const maxValue =
-    sortKey === "winPct"
+    activeSortKey === "winPct" || activeSortKey === "mvpRate"
       ? 100
-      : Math.max(1, ...rankedEntries.map((entry) => metricValue(entry, sortKey)));
+      : Math.max(1, ...rankedEntries.map((entry) => metricValue(entry, activeSortKey)));
 
   if (rankedEntries.length === 0) {
     return <p className="text-zinc-400 text-sm">{emptyMessage}</p>;
@@ -89,13 +100,13 @@ export function RankedBarChart({
           </div>
         </div>
         <div className="flex gap-1 border border-zinc-600 bg-zinc-800 p-1">
-          {SORT_OPTIONS.map((option) => (
+          {sortOptions.map((option) => (
             <button
               key={option.key}
               type="button"
               onClick={() => setSortKey(option.key)}
               className={`px-2 py-1 text-xs transition-colors ${
-                sortKey === option.key
+                activeSortKey === option.key
                   ? "bg-amber-500 text-zinc-950"
                   : "text-zinc-300 hover:bg-zinc-700"
               }`}
@@ -108,7 +119,7 @@ export function RankedBarChart({
 
       <div className="space-y-3">
         {rankedEntries.map((entry) => {
-          const value = metricValue(entry, sortKey);
+          const value = metricValue(entry, activeSortKey);
           const width = clamp((value / maxValue) * 100, value > 0 ? 5 : 0, 100);
           const winrate = calcWinrate(entry.wins, entry.games);
 
@@ -126,16 +137,25 @@ export function RankedBarChart({
                       {entry.wins}W / {entry.losses}L
                     </span>
                     <span>{entry.games} games</span>
+                    {(entry.kills || entry.deaths) > 0 && (
+                      <span>{Number(entry.kd || 0).toFixed(2)} K/D</span>
+                    )}
+                    {(entry.mvps || 0) > 0 && (
+                      <span className="text-amber-300">
+                        {entry.mvps} MVP{entry.mvps === 1 ? "" : "s"} -{" "}
+                        {formatPct(entry.mvpRate)}
+                      </span>
+                    )}
                     <RecentFormStrip form={entry.form} />
                   </div>
                 </div>
                 <span className="shrink-0 text-zinc-300">
-                  {sortKey === "winPct" ? formatPct(value) : value}
+                  {formatMetricValue(value, activeSortKey)}
                 </span>
               </div>
               <div className="h-3 overflow-hidden bg-zinc-800">
                 <div
-                  className={`h-full ${winrateBgClass(entry.winPct)}`}
+                  className={`h-full ${getBarClass(entry, activeSortKey)}`}
                   style={{ width: `${width}%` }}
                 />
               </div>
@@ -168,8 +188,9 @@ export function KDScatterPlot({ entries, minGames = 0 }) {
     0.1,
     ...plottedWithAverages.map((entry) => entry.deathsPerGame),
   );
-  const maxAxis = Math.max(maxKills, maxDeaths);
+  const maxAxis = Math.max(0.5, Math.ceil(Math.max(maxKills, maxDeaths) * 2) / 2);
   const maxGames = Math.max(1, ...plottedEntries.map((entry) => entry.games || 0));
+  const gridTicks = [0.25, 0.5, 0.75, 1].map((ratio) => maxAxis * ratio);
 
   function x(deathsPerGame) {
     return 42 + ((deathsPerGame || 0) / maxAxis) * 218;
@@ -183,6 +204,18 @@ export function KDScatterPlot({ entries, minGames = 0 }) {
     if (winPct >= 45) return "#facc15";
     return "#f87171";
   }
+  function ratioLine(ratio) {
+    const endDeaths = ratio >= 1 ? maxAxis / ratio : maxAxis;
+    const endKills = ratio >= 1 ? maxAxis : maxAxis * ratio;
+    return {
+      x1: x(0),
+      y1: y(0),
+      x2: x(endDeaths),
+      y2: y(endKills),
+      labelX: x(endDeaths),
+      labelY: y(endKills),
+    };
+  }
 
   return (
     <div className="max-w-3xl border border-zinc-500 bg-zinc-700 p-3 sm:p-4">
@@ -195,7 +228,36 @@ export function KDScatterPlot({ entries, minGames = 0 }) {
         </div>
       </div>
       <svg viewBox="0 0 300 300" role="img" className="h-auto w-full">
-        <line x1="42" y1="260" x2="260" y2="42" stroke="#71717a" strokeDasharray="4 4" />
+        {gridTicks.map((tick) => (
+          <g key={tick}>
+            <line x1={x(tick)} y1="42" x2={x(tick)} y2="260" stroke="#3f3f46" strokeOpacity="0.55" />
+            <line x1="42" y1={y(tick)} x2="260" y2={y(tick)} stroke="#3f3f46" strokeOpacity="0.55" />
+          </g>
+        ))}
+        {[0.5, 1, 2].map((ratio) => {
+          const line = ratioLine(ratio);
+          return (
+            <g key={ratio}>
+              <line
+                x1={line.x1}
+                y1={line.y1}
+                x2={line.x2}
+                y2={line.y2}
+                stroke={ratio === 1 ? "#71717a" : "#52525b"}
+                strokeDasharray="4 4"
+                strokeOpacity={ratio === 1 ? "0.95" : "0.55"}
+              />
+              <text
+                x={clamp(line.labelX + (ratio >= 1 ? -28 : -18), 48, 250)}
+                y={clamp(line.labelY + (ratio >= 1 ? 12 : -4), 50, 252)}
+                fill="#a1a1aa"
+                fontSize="8"
+              >
+                {ratio.toFixed(1)}
+              </text>
+            </g>
+          );
+        })}
         <line x1="42" y1="260" x2="260" y2="260" stroke="#a1a1aa" />
         <line x1="42" y1="42" x2="42" y2="260" stroke="#a1a1aa" />
         <text x="151" y="292" textAnchor="middle" fill="#a1a1aa" fontSize="10">
@@ -217,12 +279,36 @@ export function KDScatterPlot({ entries, minGames = 0 }) {
         <text x="260" y="275" textAnchor="middle" fill="#71717a" fontSize="9">
           {maxAxis.toFixed(1)}
         </text>
+        {gridTicks.slice(0, -1).map((tick) => (
+          <text
+            key={`x-${tick}`}
+            x={x(tick)}
+            y="275"
+            textAnchor="middle"
+            fill="#52525b"
+            fontSize="8"
+          >
+            {tick.toFixed(1)}
+          </text>
+        ))}
         <text x="30" y="263" textAnchor="end" fill="#71717a" fontSize="9">
           0
         </text>
         <text x="30" y="45" textAnchor="end" fill="#71717a" fontSize="9">
           {maxAxis.toFixed(1)}
         </text>
+        {gridTicks.slice(0, -1).map((tick) => (
+          <text
+            key={`y-${tick}`}
+            x="30"
+            y={y(tick) + 3}
+            textAnchor="end"
+            fill="#52525b"
+            fontSize="8"
+          >
+            {tick.toFixed(1)}
+          </text>
+        ))}
         {plottedWithAverages.map((entry) => {
           const radius = 4 + ((entry.games || 0) / maxGames) * 8;
           return (
@@ -457,14 +543,14 @@ function MatchupMatrix({ matchups, teams }) {
   return (
     <div className="overflow-x-auto">
       <div
-        className="grid min-w-max gap-px text-[10px]"
-        style={{ gridTemplateColumns: `8rem repeat(${teams.length}, 3rem)` }}
+        className="grid min-w-max gap-px text-xs"
+        style={{ gridTemplateColumns: `10rem repeat(${teams.length}, 4.5rem)` }}
       >
         <div />
         {teams.map((team) => (
           <div
             key={team}
-            className="truncate bg-zinc-800 p-1 text-center text-zinc-400"
+            className="truncate bg-zinc-800 p-2 text-center text-zinc-400"
             title={cleanLabel(team)}
           >
             {cleanLabel(team)}
@@ -473,7 +559,7 @@ function MatchupMatrix({ matchups, teams }) {
         {teams.map((rowTeam) => (
           <Fragment key={rowTeam}>
             <div
-              className="truncate bg-zinc-800 p-1 text-zinc-300"
+              className="truncate bg-zinc-800 p-2 text-zinc-300"
               title={cleanLabel(rowTeam)}
             >
               {cleanLabel(rowTeam)}
@@ -484,7 +570,7 @@ function MatchupMatrix({ matchups, teams }) {
               return (
                 <div
                   key={`${rowTeam}-${columnTeam}`}
-                  className="h-9 p-1 text-center text-zinc-100"
+                  className="h-14 p-2 text-center text-zinc-100"
                   style={cellStyle(value)}
                   title={
                     value
