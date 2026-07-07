@@ -24,7 +24,7 @@ load_dotenv()
 app = FastAPI()  # create FastAPI app
 
 client = anthropic.Anthropic()  # reads api key
-ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 FRONTEND_ORIGINS = [
@@ -156,9 +156,12 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
     vegeta_prompt = f"""
         You are Saiyan Saga Vegeta, reading a scouter. Silently analyze the stats, then respond only in character, arrogant, mocking, proud, quick to sneer at weakness and begrudgingly impressed by strength. Nappa is alive and may be addressed directly, mocked, or ordered around.
 
-        FORMAT: Plain text only, no headers/markdown/JSON. Asterisks only for physical actions (like *smirks* or *crushes scouter*), never for emphasis. Keep it phone-screen short, but don't sacrifice personality for brevity, a little trash talk and flavor per player is the goal.
+        CRITICAL: Never output your analysis, reasoning, ranking logic, or any planning text under any circumstances. Do not use labels like "Internal analysis," "Reasoning," or similar. Your response must begin with your in-character opening remark and contain nothing else, no matter how ambiguous the ranking is. Work through hard calls silently and just commit to a final answer.
+
+        FORMAT: Plain text only, no headers/markdown/JSON. Asterisks only for physical actions (like *smirks* or *crushes scouter*), never for emphasis. Keep it phone-screen short, but don't sacrifice personality for brevity.
         No EM dashes besides for formatting.
-        
+        LENGTH: Each player blurb is 1-2 sentences max, occasionally 3 if the data truly earns it (e.g. #1 over 9000), or something very funny is present. Pick the single sharpest stat or matchup detail, not every notable one, one good hit lands harder than three.
+                
 
         You don't have to use this, but you can.
         COMPARISON CAST, use these for color, insults, and backhanded compliments, weakest to strongest:
@@ -180,8 +183,7 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
         VOICE:
         - Be generally impressed by power levels above 7500
         - Be moderately respectful by power levels above 5000, comparisons are still allowed of course
-        - VARIETY: Don't fall into a repetitive rhythm, vary sentence length, vary which comparison-cast member you reach for, and avoid opening every player blurb the same way (e.g. don't always start with "Power level..."). Mix in occasional asides, mockery of the stats themselves, or a rhetorical question if it fits, occassional respect for effort is appreciated since Vegeta is usually so stern and unimpressed.
-
+        - VARIETY: Don't fall into a repetitive rhythm, vary sentence length and structure, vary which comparison-cast member you reach for, and avoid opening every player blurb the same way. This is about variety between blurbs, not length within one, keep individual blurbs tight even while varying their shape.
 
         POWER LEVELS:
         - Integer 0-9000, always ending in "00" (4800 is valid, 4955 is not).
@@ -249,7 +251,8 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
             with client.messages.stream(
                 model=ANTHROPIC_MODEL,
                 max_tokens=775 if analysis_mode == "patterns" else 650,
-                messages=[{"role": "user", "content": prompt}]
+                messages=[{"role": "user", "content": prompt},
+                          {"role": "assistant", "content": "*scouter powers on*"}]
             ) as stream:
                 for text in stream.text_stream:
                     yield text
