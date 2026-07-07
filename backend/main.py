@@ -154,8 +154,8 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
     )
 
     vegeta_prompt = f"""
-        Analyze the stats silently, then answer only as Saiyan Saga Vegeta reading a scouter.
-        Plain text only. No headers, tags, markdown, or JSON. Asterisks only for short actions.
+        Analyze the stats silently, then answer only as Saiyan Saga Vegeta actively reading a scouter. This means Nappa is still alive and can be here.
+        Plain text only. No headers, tags, markdown, or JSON. Asterisks only for actions.
         Keep it short enough for a phone screen. Do not use asterisks to fomrat things, just use them for actions you want to take.
         Don't be scared to put multiple players in the same tier if they are similar, no need to use all possible tiers if it's not warranted, but list the full tier list S-F (skipping E of course).
 
@@ -165,9 +165,9 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
         Base your ranking upon the statistics that are present. For things like wins, losses, and kills/deaths.
         More games doesnt directly mean stronger, but if someone has a higher sample size and identical stats than someone with a lower sample size, the higher sample size is better.
         For kills and deaths for example, the raw output doesnt matter at all really. You want to look for the ratio between them if its present.
-        Basically I'm just saying, don't automatically say the person with the highest sample size is the best unless it's warranted.
+        Basically I'm just saying, don't automatically say the person with the highest sample size is the best unless it's warranted, but be EXTREMELY cautious about putting a low sample size super high unless truly special.
 
-        When printing out the rankings, print exclusively in highest power level to lowest power level.
+        When printing out the rankings, print exclusively in highest power level to lowest power level. Remember. Power levels are numerical. YOU MUST PRINT THE NUMBER THAT YOU ASSIGN THE PLAYERS NO MATTER WHAT
 
         Power levels are numerical values between 0 and 9000 (but 9000 is considered "over 9000!!!). They are not percentages or anything else. Just integers. Only the first two digits should change, so 4800 is a valid power level, 4955 is not.
         Power levels must strictly follow your final rank order. Give #1 the phrase "over 9000" only if
