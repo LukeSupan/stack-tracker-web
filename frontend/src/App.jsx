@@ -150,6 +150,7 @@ export default function App() {
         body: JSON.stringify({
           data: filteredAnalysisData,
           analysis_mode: analysisMode,
+          save_name: savesProps.saveName,
         }),
       });
       if (!res.ok) {
