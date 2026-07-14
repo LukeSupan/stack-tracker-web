@@ -7,6 +7,7 @@ export function InputPanel({
   gameInput,
   loading,
   error,
+  autosaveWarning,
   session,
   showingPasswordResetPanel,
   savesProps,
@@ -42,6 +43,9 @@ export function InputPanel({
           {loading ? "Loading..." : "Submit"}
         </button>
         {error && <p className="text-red-400 text-xs mt-2">{error}</p>}
+        {autosaveWarning && (
+          <p className="text-amber-300 text-xs mt-2">{autosaveWarning}</p>
+        )}
 
         {session && !showingPasswordResetPanel ? (
           <SavesPanel userEmail={session.user.email} {...savesProps} />

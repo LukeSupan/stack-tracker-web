@@ -26,6 +26,7 @@ export default function App() {
 
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const [autosaveWarning, setAutosaveWarning] = useState("");
   const [loading, setLoading] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [analysis, setAnalysis] = useState(null);
@@ -51,6 +52,7 @@ export default function App() {
 
   const { autoUpdateActiveSaveContent, savesProps } = useCloudSaves({
     session,
+    authLoading: authProps.authLoading,
     currentContent: input.currentContent,
     onLoadContent: loadSavedContent,
     onNewBlank: startNewBlankSave,
@@ -96,6 +98,7 @@ export default function App() {
     const submittedContent = input.currentContent();
     setLoading(true);
     setError(null);
+    setAutosaveWarning("");
     setAnalysis(null);
     try {
       const res = await fetch(`${API_URL}/stats`, {
@@ -107,7 +110,14 @@ export default function App() {
         throw new Error(await readResponseError(res, "Something went wrong"));
       }
       setData(await res.json());
-      await autoUpdateActiveSaveContent(submittedContent);
+      const autosaveResult =
+        await autoUpdateActiveSaveContent(submittedContent);
+      if (autosaveResult && !autosaveResult.saved && autosaveResult.message) {
+        setAutosaveWarning(autosaveResult.message);
+        if (autosaveResult.alert) {
+          window.alert(autosaveResult.message);
+        }
+      }
     } catch (errorObject) {
       setError(errorObject.message);
     } finally {
@@ -225,6 +235,7 @@ export default function App() {
           gameInput={input}
           loading={loading}
           error={error}
+          autosaveWarning={autosaveWarning}
           session={session}
           showingPasswordResetPanel={showingPasswordResetPanel}
           savesProps={{ ...savesProps, onSignOut: signOut }}

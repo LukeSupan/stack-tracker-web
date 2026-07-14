@@ -1,8 +1,31 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
+
+const ACTIVE_SAVE_ID_KEY_PREFIX = "activeSaveId";
+
+function activeSaveStorageKey(userId) {
+  return `${ACTIVE_SAVE_ID_KEY_PREFIX}:${userId}`;
+}
+
+function readStoredActiveSaveId(userId) {
+  if (!userId) return null;
+  return localStorage.getItem(activeSaveStorageKey(userId));
+}
+
+function rememberActiveSaveId(userId, saveId) {
+  if (!userId) return;
+
+  if (saveId) {
+    localStorage.setItem(activeSaveStorageKey(userId), saveId);
+    return;
+  }
+
+  localStorage.removeItem(activeSaveStorageKey(userId));
+}
 
 export function useCloudSaves({
   session,
+  authLoading,
   currentContent,
   onLoadContent,
   onNewBlank,
@@ -13,9 +36,23 @@ export function useCloudSaves({
   const [saveMessage, setSaveMessage] = useState("");
   const [saveName, setSaveName] = useState("");
   const [activeSaveId, setActiveSaveId] = useState(null);
+  const activeSaveIdRef = useRef(activeSaveId);
+  const userId = session?.user?.id || null;
+
+  useEffect(() => {
+    activeSaveIdRef.current = activeSaveId;
+  }, [activeSaveId]);
+
+  function commitActiveSaveId(saveId, { persist = true } = {}) {
+    activeSaveIdRef.current = saveId;
+    setActiveSaveId(saveId);
+    if (persist) {
+      rememberActiveSaveId(userId, saveId);
+    }
+  }
 
   const fetchSaves = useCallback(async () => {
-    if (!supabase || !session) return;
+    if (!supabase || !userId) return;
     setSavesLoading(true);
     setSavesError("");
     try {
@@ -25,27 +62,85 @@ export function useCloudSaves({
         .order("updated_at", { ascending: false });
 
       if (loadError) throw loadError;
-      setSaves(loadedSaves || []);
+      const nextSaves = loadedSaves || [];
+      const selectedSave =
+        nextSaves.find((save) => save.id === activeSaveIdRef.current) ||
+        nextSaves.find((save) => save.id === readStoredActiveSaveId(userId));
+
+      setSaves(nextSaves);
+      if (selectedSave) {
+        activeSaveIdRef.current = selectedSave.id;
+        setActiveSaveId(selectedSave.id);
+        setSaveName(selectedSave.name);
+        rememberActiveSaveId(userId, selectedSave.id);
+      } else if (activeSaveIdRef.current || readStoredActiveSaveId(userId)) {
+        activeSaveIdRef.current = null;
+        setActiveSaveId(null);
+        setSaveName("");
+        rememberActiveSaveId(userId, null);
+      }
     } catch (errorObject) {
       setSavesError(errorObject.message);
     } finally {
       setSavesLoading(false);
     }
-  }, [session]);
+  }, [userId]);
 
   useEffect(() => {
-    if (session) {
+    if (userId) {
       fetchSaves();
       return;
     }
 
+    if (authLoading) return;
+
     setSaves([]);
+    activeSaveIdRef.current = null;
     setActiveSaveId(null);
     setSaveName("");
-  }, [session, fetchSaves]);
+  }, [authLoading, fetchSaves, userId]);
 
   async function autoUpdateActiveSaveContent(content) {
-    if (!supabase || !session || !activeSaveId || !content) return;
+    if (!supabase) {
+      return {
+        saved: false,
+        alert: true,
+        message: "Stats submitted, but cloud saves are not configured.",
+      };
+    }
+
+    let currentSession = session;
+    if (!currentSession) {
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+      if (sessionError) {
+        const message = `Stats submitted, but autosave could not verify your login: ${sessionError.message}`;
+        setSavesError(message);
+        return { saved: false, alert: true, message };
+      }
+      currentSession = sessionData.session;
+    }
+
+    if (!currentSession) {
+      const message =
+        "Stats submitted, but autosave did not run because you are signed out. Sign in again, then click Update Save.";
+      setSavesError(message);
+      return { saved: false, alert: true, message };
+    }
+
+    if (!activeSaveIdRef.current) {
+      const message =
+        "Stats submitted, but autosave did not run because no cloud save is selected. Load a save or click Save New before submitting.";
+      setSavesError(message);
+      return { saved: false, alert: true, message };
+    }
+
+    if (!content) {
+      const message =
+        "Stats submitted, but autosave did not run because there is no game data to save.";
+      setSavesError(message);
+      return { saved: false, alert: false, message };
+    }
 
     setSavesError("");
     setSaveMessage("");
@@ -54,7 +149,7 @@ export function useCloudSaves({
       const { data: updatedSave, error: updateError } = await supabase
         .from("saves")
         .update({ content })
-        .eq("id", activeSaveId)
+        .eq("id", activeSaveIdRef.current)
         .select("id,name,content,created_at,updated_at")
         .single();
 
@@ -64,13 +159,35 @@ export function useCloudSaves({
         ...previousSaves.filter((save) => save.id !== updatedSave.id),
       ]);
       setSaveMessage("Save auto-updated.");
+      return { saved: true, message: "Save auto-updated." };
     } catch (errorObject) {
-      setSavesError(`Stats submitted, but autosave failed: ${errorObject.message}`);
+      const message = `Stats submitted, but autosave failed: ${errorObject.message}`;
+      setSavesError(message);
+      return { saved: false, alert: true, message };
     }
   }
 
   async function writeSave({ forceNew = false } = {}) {
-    if (!supabase || !session) return;
+    if (!supabase) {
+      setSavesError("Cloud saves are not configured.");
+      return;
+    }
+
+    let currentSession = session;
+    if (!currentSession) {
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+      if (sessionError) {
+        setSavesError(`Could not verify your login: ${sessionError.message}`);
+        return;
+      }
+      currentSession = sessionData.session;
+    }
+
+    if (!currentSession) {
+      setSavesError("Sign in again before saving.");
+      return;
+    }
 
     const name = saveName.trim();
     const content = currentContent();
@@ -108,12 +225,14 @@ export function useCloudSaves({
 
       const { data: createdSave, error: createError } = await supabase
         .from("saves")
-        .insert({ user_id: session.user.id, name, content })
+        .insert({ user_id: currentSession.user.id, name, content })
         .select("id,name,content,created_at,updated_at")
         .single();
 
       if (createError) throw createError;
+      activeSaveIdRef.current = createdSave.id;
       setActiveSaveId(createdSave.id);
+      rememberActiveSaveId(currentSession.user.id, createdSave.id);
       setSaves((previousSaves) => [
         createdSave,
         ...previousSaves.filter((save) => save.id !== createdSave.id),
@@ -125,7 +244,7 @@ export function useCloudSaves({
   }
 
   function loadSave(save) {
-    setActiveSaveId(save.id);
+    commitActiveSaveId(save.id);
     setSaveName(save.name);
     setSaveMessage("");
     setSavesError("");
@@ -133,7 +252,7 @@ export function useCloudSaves({
   }
 
   function newBlankSave() {
-    setActiveSaveId(null);
+    commitActiveSaveId(null);
     setSaveName("");
     setSaveMessage("");
     setSavesError("");
@@ -159,7 +278,7 @@ export function useCloudSaves({
         previousSaves.filter((save) => save.id !== saveId),
       );
       if (saveId === activeSaveId) {
-        setActiveSaveId(null);
+        commitActiveSaveId(null);
       }
       setSaveMessage("Save deleted.");
     } catch (errorObject) {
