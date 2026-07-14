@@ -37,11 +37,16 @@ export function useCloudSaves({
   const [saveName, setSaveName] = useState("");
   const [activeSaveId, setActiveSaveId] = useState(null);
   const activeSaveIdRef = useRef(activeSaveId);
+  const onLoadContentRef = useRef(onLoadContent);
   const userId = session?.user?.id || null;
 
   useEffect(() => {
     activeSaveIdRef.current = activeSaveId;
   }, [activeSaveId]);
+
+  useEffect(() => {
+    onLoadContentRef.current = onLoadContent;
+  }, [onLoadContent]);
 
   function commitActiveSaveId(saveId, { persist = true } = {}) {
     activeSaveIdRef.current = saveId;
@@ -63,9 +68,14 @@ export function useCloudSaves({
 
       if (loadError) throw loadError;
       const nextSaves = loadedSaves || [];
+      const storedActiveSaveId = readStoredActiveSaveId(userId);
       const selectedSave =
         nextSaves.find((save) => save.id === activeSaveIdRef.current) ||
-        nextSaves.find((save) => save.id === readStoredActiveSaveId(userId));
+        nextSaves.find((save) => save.id === storedActiveSaveId);
+      const shouldLoadStoredSaveContent =
+        selectedSave &&
+        !activeSaveIdRef.current &&
+        selectedSave.id === storedActiveSaveId;
 
       setSaves(nextSaves);
       if (selectedSave) {
@@ -73,7 +83,10 @@ export function useCloudSaves({
         setActiveSaveId(selectedSave.id);
         setSaveName(selectedSave.name);
         rememberActiveSaveId(userId, selectedSave.id);
-      } else if (activeSaveIdRef.current || readStoredActiveSaveId(userId)) {
+        if (shouldLoadStoredSaveContent) {
+          onLoadContentRef.current(selectedSave.content);
+        }
+      } else if (activeSaveIdRef.current || storedActiveSaveId) {
         activeSaveIdRef.current = null;
         setActiveSaveId(null);
         setSaveName("");

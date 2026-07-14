@@ -7,19 +7,7 @@ import {
 const PASTE_INPUT_HEIGHT_KEY = "pasteInputHeight";
 const EASY_INPUT_HEIGHT_KEY = "easyInputHeight";
 const INPUT_MODE_KEY = "inputMode";
-
-function readStoredGames() {
-  const saved = localStorage.getItem("games");
-  if (!saved) return [];
-
-  try {
-    const parsed = JSON.parse(saved);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    localStorage.removeItem("games");
-    return [];
-  }
-}
+const LEGACY_INPUT_STORAGE_KEYS = ["pasteInput", "gameTag", "games"];
 
 function readInitialInputMode() {
   const savedMode = localStorage.getItem(INPUT_MODE_KEY);
@@ -36,13 +24,9 @@ function parseLines(content) {
 
 export function useGameInput(isDesktop) {
   const [mode, setMode] = useState(readInitialInputMode);
-  const [pasteInput, setPasteInput] = useState(
-    () => localStorage.getItem("pasteInput") || "",
-  );
-  const [gameTag, setGameTag] = useState(
-    () => localStorage.getItem("gameTag") || "",
-  );
-  const [games, setGames] = useState(readStoredGames);
+  const [pasteInput, setPasteInput] = useState("");
+  const [gameTag, setGameTag] = useState("");
+  const [games, setGames] = useState([]);
   const [currentLine, setCurrentLine] = useState("");
   const pasteInputRef = useRef(null);
   const easyInputRef = useRef(null);
@@ -62,14 +46,8 @@ export function useGameInput(isDesktop) {
     localStorage.setItem(INPUT_MODE_KEY, mode);
   }, [mode]);
   useEffect(() => {
-    localStorage.setItem("pasteInput", pasteInput);
-  }, [pasteInput]);
-  useEffect(() => {
-    localStorage.setItem("gameTag", gameTag);
-  }, [gameTag]);
-  useEffect(() => {
-    localStorage.setItem("games", JSON.stringify(games));
-  }, [games]);
+    LEGACY_INPUT_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
+  }, []);
   useEffect(() => {
     if (mode === "easy") {
       easyGamesEndRef.current?.scrollIntoView({ block: "nearest" });
