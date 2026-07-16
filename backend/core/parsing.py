@@ -1,7 +1,5 @@
 # parse input format into easily usable format
 
-import re
-
 # parse mvp, key tags, and optional [kills-deaths] bracket out of name
 # result is (name, is_mvp, is_key, kills, deaths)
 # kills and deaths are None if no bracket was present
@@ -14,11 +12,19 @@ def parse_name_and_tags(name):
     deaths = None
 
     # extract [kills-deaths] bracket if present
-    kd_match = re.search(r'\[(\d+)-(\d+)\]', name)
-    if kd_match:
-        kills = int(kd_match.group(1))
-        deaths = int(kd_match.group(2))
-        name = (name[:kd_match.start()] + name[kd_match.end():]).strip()
+    bracket_start = name.find("[")
+    bracket_end = name.find("]", bracket_start + 1)
+    if bracket_start != -1 and bracket_end != -1:
+        kd_text = name[bracket_start + 1:bracket_end]
+        kd_parts = kd_text.split("-")
+        if (
+            len(kd_parts) == 2
+            and kd_parts[0].isdigit()
+            and kd_parts[1].isdigit()
+        ):
+            kills = int(kd_parts[0])
+            deaths = int(kd_parts[1])
+            name = (name[:bracket_start] + name[bracket_end + 1:]).strip()
 
     # extract (mvp) or (key) tag
     if name.endswith("(mvp)"):

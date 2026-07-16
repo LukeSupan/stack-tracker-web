@@ -9,7 +9,6 @@ from games.hero_shooter import run as run_hero_shooter
 import anthropic
 import json
 import os
-import re
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -77,8 +76,9 @@ def sanitize_save_name(value):
     if not isinstance(value, str):
         return ""
 
-    cleaned = re.sub(r"\s+", " ", value).strip()
-    cleaned = re.sub(r"[^A-Za-z0-9 .,'!?:&()+\\-]", "", cleaned)
+    allowed = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,'!?:&()+-")
+    cleaned = " ".join(value.split())
+    cleaned = "".join(character for character in cleaned if character in allowed)
     return cleaned[:60]
 
 
