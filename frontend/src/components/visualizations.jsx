@@ -573,6 +573,26 @@ export function MatchupVisualization({ matchups, minGames = 0 }) {
   const activeSortKey = sortOptions.some((option) => option.key === sortKey)
     ? sortKey
     : sortOptions[0].key;
+  const playerMatchups = useMemo(() => {
+    if (activePlayer === "all") return [];
+    return summaries
+      .map((summary) => ({
+        ...summary,
+        playerSide: summary.sides.find((side) =>
+          side.players.includes(activePlayer),
+        ),
+      }))
+      .filter((summary) => summary.games >= minGames && summary.playerSide)
+      .sort((a, b) => {
+        const winPct = (b.playerSide?.pct || 0) - (a.playerSide?.pct || 0);
+        if (winPct !== 0) return winPct;
+        return b.games - a.games;
+      });
+  }, [activePlayer, minGames, summaries]);
+  const playerInsight = useMemo(() => {
+    if (activePlayer === "all") return null;
+    return buildPlayerMatchupInsight(activePlayer, playerMatchups);
+  }, [activePlayer, playerMatchups]);
   const sortedMatchups = useMemo(() => {
     return summaries
       .map((summary) => ({
@@ -685,6 +705,7 @@ export function MatchupVisualization({ matchups, minGames = 0 }) {
       ) : (
         <p className="text-zinc-400 text-sm">No matchups meet the current cutoff.</p>
       )}
+      {playerInsight && <PlayerMatchupBonus insight={playerInsight} />}
     </div>
   );
 }
@@ -711,6 +732,105 @@ function buildMatchupSummary(matchup, data) {
     sides,
     margin,
   };
+}
+
+function opponentLabel(summary, player) {
+  const opponent = summary.sides.find((side) => !side.players.includes(player));
+  return opponent ? cleanLabel(opponent.team) : "the field";
+}
+
+function buildPlayerMatchupInsight(player, playerMatchups) {
+  if (playerMatchups.length === 0) return null;
+
+  const totals = playerMatchups.reduce(
+    (record, summary) => {
+      record.games += summary.games;
+      record.wins += summary.playerSide?.wins || 0;
+      return record;
+    },
+    { games: 0, wins: 0 },
+  );
+  const totalWinPct = totals.games ? (totals.wins / totals.games) * 100 : 0;
+  const withOpponentLabels = playerMatchups.map((summary) => ({
+    ...summary,
+    opponentLabel: opponentLabel(summary, player),
+  }));
+  const best = [...withOpponentLabels].sort((a, b) => {
+    const pct = (b.playerSide?.pct || 0) - (a.playerSide?.pct || 0);
+    if (pct !== 0) return pct;
+    return b.games - a.games;
+  })[0];
+  const roughest = [...withOpponentLabels].sort((a, b) => {
+    const pct = (a.playerSide?.pct || 0) - (b.playerSide?.pct || 0);
+    if (pct !== 0) return pct;
+    return b.games - a.games;
+  })[0];
+  const mostPlayed = [...withOpponentLabels].sort((a, b) => {
+    const games = b.games - a.games;
+    if (games !== 0) return games;
+    return (b.playerSide?.pct || 0) - (a.playerSide?.pct || 0);
+  })[0];
+
+  return {
+    player,
+    totals: {
+      ...totals,
+      losses: totals.games - totals.wins,
+      winPct: totalWinPct,
+    },
+    best,
+    roughest,
+    mostPlayed,
+    graphEntries: withOpponentLabels.slice(0, 6),
+  };
+}
+
+function PlayerMatchupBonus({ insight }) {
+  const statCards = [
+    {
+      label: "Matchup record",
+      value: `${insight.totals.wins}W / ${insight.totals.losses}L`,
+      detail: `${formatPct(insight.totals.winPct)} over ${insight.totals.games} games`,
+    },
+    {
+      label: "Best look",
+      value: `vs ${insight.best.opponentLabel}`,
+      detail: `${formatPct(insight.best.playerSide?.pct)} over ${insight.best.games} games`,
+    },
+    {
+      label: "Roughest look",
+      value: `vs ${insight.roughest.opponentLabel}`,
+      detail: `${formatPct(insight.roughest.playerSide?.pct)} over ${insight.roughest.games} games`,
+    },
+    {
+      label: "Main rivalry",
+      value: `vs ${insight.mostPlayed.opponentLabel}`,
+      detail: `${insight.mostPlayed.games} games, ${formatPct(insight.mostPlayed.playerSide?.pct)}`,
+    },
+  ];
+
+  return (
+    <div className="mt-4 border border-zinc-600 bg-zinc-800 p-3">
+      <div className="mb-3">
+        <div className="text-xs uppercase tracking-widest text-zinc-400">
+          {cleanLabel(insight.player)} matchup readout
+        </div>
+      </div>
+      <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        {statCards.map((card) => (
+          <div key={card.label} className="border border-zinc-700 bg-zinc-900/40 p-2">
+            <div className="text-[11px] uppercase tracking-widest text-zinc-500">
+              {card.label}
+            </div>
+            <div className="mt-1 break-words text-sm font-bold text-zinc-100">
+              {card.value}
+            </div>
+            <div className="mt-1 text-[11px] text-zinc-400">{card.detail}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function MatchupCard({ summary, selectedPlayer }) {
