@@ -68,50 +68,16 @@ function metricTextClass(entry, sortKey, maxValue) {
   return "text-zinc-300";
 }
 
-function layoutScatterLabels(points) {
-  const placed = [];
-  return points
-    .map((point, index) => ({ ...point, index }))
-    .sort((a, b) => a.cy - b.cy || a.cx - b.cx)
-    .map((point) => {
-      let labelX = point.cx + point.radius + 4;
-      let labelY = point.cy + 3;
-
-      for (let attempt = 0; attempt < 9; attempt += 1) {
-        const overlaps = placed.some(
-          (label) =>
-            Math.abs(label.x - labelX) < 42 && Math.abs(label.y - labelY) < 11,
-        );
-        if (!overlaps) break;
-        labelY += 11;
-        labelX += attempt % 2 === 0 ? 5 : -2;
-      }
-
-      labelX = clamp(labelX, 46, 262);
-      labelY = clamp(labelY, 48, 254);
-      placed.push({ x: labelX, y: labelY });
-      return { ...point, labelX, labelY };
-    })
-    .sort((a, b) => a.index - b.index);
+function detailMetricClass(metricKey, activeSortKey, activeClass = "text-zinc-100") {
+  return metricKey === activeSortKey ? activeClass : "text-zinc-400";
 }
 
-export function RecentFormStrip({ form = [] }) {
-  const recent = form.slice(-12);
-  if (recent.length === 0) return null;
+function detailWinrateClass(winrate, activeSortKey) {
+  return activeSortKey === "winPct" ? winrateColor(winrate) : "text-zinc-400";
+}
 
-  return (
-    <div className="flex gap-1" aria-label={`Recent form: ${recent.join("")}`}>
-      {recent.map((result, index) => (
-        <span
-          key={`${result}-${index}`}
-          className={`h-2 w-2 shrink-0 rounded-full ${
-            result === "W" ? "bg-emerald-400" : "bg-red-400"
-          }`}
-          title={result === "W" ? "Win" : "Loss"}
-        />
-      ))}
-    </div>
-  );
+function detailVolumeClass(value, maxValue, metricKey, activeSortKey) {
+  return metricKey === activeSortKey ? volumeColor(value, maxValue) : "text-zinc-400";
 }
 
 export function RankedBarChart({
@@ -189,29 +155,49 @@ export function RankedBarChart({
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-400">
                     <span>
-                      <span className={winrateColor(winrate)}>{winrate}</span>
+                      <span className={detailWinrateClass(winrate, activeSortKey)}>
+                        {winrate}
+                      </span>
                       {"  "}
-                      <span className={volumeColor(entry.wins, maxWins)}>
+                      <span
+                        className={detailVolumeClass(
+                          entry.wins,
+                          maxWins,
+                          "wins",
+                          activeSortKey,
+                        )}
+                      >
                         {entry.wins}W
                       </span>{" "}
                       / {entry.losses}L
                     </span>
-                    <span className={volumeColor(entry.games, maxGames)}>
+                    <span
+                      className={detailVolumeClass(
+                        entry.games,
+                        maxGames,
+                        "games",
+                        activeSortKey,
+                      )}
+                    >
                       {entry.games} games
                     </span>
-                    {entry.compSize > 0 && (
-                      <span>{formatCompSize(entry.compSize)}</span>
-                    )}
                     {(entry.kills || entry.deaths) > 0 && (
-                      <span>{Number(entry.kd || 0).toFixed(2)} K/D</span>
+                      <span className={detailMetricClass("kd", activeSortKey)}>
+                        {Number(entry.kd || 0).toFixed(2)} K/D
+                      </span>
                     )}
                     {(entry.mvps || 0) > 0 && (
-                      <span className="text-amber-300">
+                      <span
+                        className={detailMetricClass(
+                          "mvpRate",
+                          activeSortKey,
+                          "text-amber-300",
+                        )}
+                      >
                         {entry.mvps} MVP{entry.mvps === 1 ? "" : "s"} -{" "}
                         {formatPct(entry.mvpRate)}
                       </span>
                     )}
-                    <RecentFormStrip form={entry.form} />
                   </div>
                 </div>
                 <span
@@ -334,17 +320,15 @@ export function KDScatterPlot({ entries, minGames = 0 }) {
       labelY: y(endKills),
     };
   }
-  const labelPoints = layoutScatterLabels(
-    plottedWithAverages.map((entry) => {
-      const radius = 4 + ((entry.games || 0) / maxGames) * 8;
-      return {
-        ...entry,
-        cx: x(entry.deathsPerGame),
-        cy: y(entry.killsPerGame),
-        radius,
-      };
-    }),
-  );
+  const plottedPoints = plottedWithAverages.map((entry) => {
+    const radius = 4 + ((entry.games || 0) / maxGames) * 8;
+    return {
+      ...entry,
+      cx: x(entry.deathsPerGame),
+      cy: y(entry.killsPerGame),
+      radius,
+    };
+  });
 
   return (
     <div className="max-w-3xl border border-zinc-500 bg-zinc-700 p-3 sm:p-4">
@@ -438,7 +422,7 @@ export function KDScatterPlot({ entries, minGames = 0 }) {
             {tick.toFixed(1)}
           </text>
         ))}
-        {labelPoints.map((entry) => {
+        {plottedPoints.map((entry) => {
           return (
             <g key={entry.id || entry.label}>
               <circle
@@ -458,22 +442,6 @@ export function KDScatterPlot({ entries, minGames = 0 }) {
                   )}, ${entry.games} games`}
                 </title>
               </circle>
-              <line
-                x1={entry.cx + entry.radius}
-                y1={entry.cy}
-                x2={entry.labelX - 2}
-                y2={entry.labelY - 3}
-                stroke="#71717a"
-                strokeOpacity="0.35"
-              />
-              <text
-                x={entry.labelX}
-                y={entry.labelY}
-                fill="#e4e4e7"
-                fontSize="9"
-              >
-                {entry.label}
-              </text>
             </g>
           );
         })}
