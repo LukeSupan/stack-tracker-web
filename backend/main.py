@@ -70,7 +70,7 @@ def is_usage_limit_error(error):
 
 
 def usage_limit_message():
-    return "My monthly AI credits are used up. The Scouter will be back next month!"
+    return "GRAH! The blasted scouter is broken Nappa! Check again next month... Lord Frieza will send a new batch."
 
 
 def sanitize_save_name(value):
@@ -260,7 +260,7 @@ def analyze(payload: dict, user: dict = Depends(require_user)):
             if is_usage_limit_error(e):
                 yield usage_limit_message()
                 return
-            yield "GRAH. Blasted scouter is dead... Try again next month weakling."
+            yield "GRAH. Blasted scouter is on the fritz! Try again later..."
 
     return StreamingResponse(
         stream(),
