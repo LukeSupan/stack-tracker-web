@@ -781,7 +781,6 @@ function buildPlayerMatchupInsight(player, playerMatchups) {
     best,
     roughest,
     mostPlayed,
-    graphEntries: withOpponentLabels.slice(0, 6),
   };
 }
 
@@ -816,7 +815,7 @@ function PlayerMatchupBonus({ insight }) {
           {cleanLabel(insight.player)} matchup readout
         </div>
       </div>
-      <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
         {statCards.map((card) => (
           <div key={card.label} className="border border-zinc-700 bg-zinc-900/40 p-2">
             <div className="text-[11px] uppercase tracking-widest text-zinc-500">
