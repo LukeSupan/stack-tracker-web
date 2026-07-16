@@ -1,10 +1,23 @@
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { calcWinrate, volumeBgColor, volumeColor, winrateColor } from "../utils/stats";
 
 const SORT_OPTIONS = [
   { key: "games", label: "Games" },
   { key: "winPct", label: "Win%" },
   { key: "wins", label: "Wins" },
+];
+const COMP_SORT_OPTIONS = [
+  ...SORT_OPTIONS,
+  { key: "compSize", label: "Size" },
+];
+const MATCHUP_SORT_OPTIONS = [
+  { key: "games", label: "Games" },
+  { key: "closest", label: "Closest" },
+  { key: "edge", label: "Biggest edge" },
+];
+const PLAYER_MATCHUP_SORT_OPTIONS = [
+  { key: "playerWinPct", label: "Win%" },
+  { key: "games", label: "Games" },
 ];
 
 function clamp(value, min, max) {
@@ -27,7 +40,7 @@ function winrateBgClass(winPct) {
 }
 
 function defaultBarClass(entry, sortKey, maxValue) {
-  if (sortKey === "games" || sortKey === "wins") {
+  if (sortKey === "games" || sortKey === "wins" || sortKey === "compSize") {
     return volumeBgColor(metricValue(entry, sortKey), maxValue);
   }
   return winrateBgClass(entry.winPct);
@@ -41,11 +54,12 @@ function metricValue(entry, sortKey) {
 function formatMetricValue(value, sortKey) {
   if (sortKey === "winPct" || sortKey === "mvpRate") return formatPct(value);
   if (sortKey === "kd") return Number(value || 0).toFixed(2);
+  if (sortKey === "compSize") return `${value}p`;
   return value;
 }
 
 function metricTextClass(entry, sortKey, maxValue) {
-  if (sortKey === "games" || sortKey === "wins") {
+  if (sortKey === "games" || sortKey === "wins" || sortKey === "compSize") {
     return volumeColor(metricValue(entry, sortKey), maxValue);
   }
   if (sortKey === "winPct") {
@@ -185,6 +199,9 @@ export function RankedBarChart({
                     <span className={volumeColor(entry.games, maxGames)}>
                       {entry.games} games
                     </span>
+                    {entry.compSize > 0 && (
+                      <span>{formatCompSize(entry.compSize)}</span>
+                    )}
                     {(entry.kills || entry.deaths) > 0 && (
                       <span>{Number(entry.kd || 0).toFixed(2)} K/D</span>
                     )}
@@ -217,6 +234,53 @@ export function RankedBarChart({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+export function CompRankingChart({ entries, minGames = 0 }) {
+  const sizeOptions = useMemo(() => {
+    return [...new Set(entries.map((entry) => entry.compSize).filter(Boolean))].sort(
+      (a, b) => a - b,
+    );
+  }, [entries]);
+  const [selectedSize, setSelectedSize] = useState("any");
+  const activeSize = sizeOptions.includes(Number(selectedSize))
+    ? selectedSize
+    : "any";
+  const filteredEntries = useMemo(() => {
+    if (activeSize === "any") return entries;
+    const size = Number(activeSize);
+    return entries.filter((entry) => entry.compSize === size);
+  }, [activeSize, entries]);
+
+  return (
+    <div>
+      {sizeOptions.length > 1 && (
+        <div className="mb-3 flex w-fit flex-wrap items-end gap-2">
+          <label className="text-xs text-zinc-400">
+            <span className="mb-1 block">Comp size</span>
+            <select
+              value={activeSize}
+              onChange={(event) => setSelectedSize(event.target.value)}
+              className="bg-zinc-700 border border-zinc-500 text-zinc-100 text-xs px-2 py-2 focus:outline-none focus:border-amber-400/40"
+            >
+              <option value="any">Any size</option>
+              {sizeOptions.map((size) => (
+                <option key={size} value={size}>
+                  {formatCompSize(size)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
+      <RankedBarChart
+        entries={filteredEntries}
+        minGames={minGames}
+        title="Comp ranking"
+        sortOptions={COMP_SORT_OPTIONS}
+      />
     </div>
   );
 }
@@ -474,200 +538,240 @@ function matchupTeams(matchup) {
   return matchup.split(" vs ");
 }
 
-export function MatchupVisualization({ matchups, minGames = 0 }) {
-  const [view, setView] = useState("bars");
-  const sortedMatchups = useMemo(
-    () =>
-      matchups
-        .filter(([, data]) => (data.games || 0) >= minGames)
-        .sort(([, a], [, b]) => (b.games || 0) - (a.games || 0)),
-    [matchups, minGames],
-  );
-  const teams = useMemo(() => {
-    const labels = new Set();
-    sortedMatchups.forEach(([matchup]) => {
-      matchupTeams(matchup).forEach((team) => labels.add(team));
-    });
-    return [...labels].sort((a, b) => cleanLabel(a).localeCompare(cleanLabel(b)));
-  }, [sortedMatchups]);
+function teamPlayers(team) {
+  return String(team || "")
+    .split(",")
+    .map((player) => player.trim())
+    .filter(Boolean);
+}
 
-  if (sortedMatchups.length === 0) {
-    return <p className="text-zinc-400 text-sm">No matchups meet the current cutoff.</p>;
-  }
+function formatCompSize(size) {
+  return `${size} player${size === 1 ? "" : "s"}`;
+}
+
+export function MatchupVisualization({ matchups, minGames = 0 }) {
+  const [sortKey, setSortKey] = useState("games");
+  const [selectedPlayer, setSelectedPlayer] = useState("all");
+  const [showAllForPlayer, setShowAllForPlayer] = useState(false);
+  const summaries = useMemo(() => {
+    return matchups.map(([matchup, data]) => buildMatchupSummary(matchup, data));
+  }, [matchups]);
+  const playerOptions = useMemo(() => {
+    const players = new Set();
+    summaries.forEach((summary) => {
+      summary.sides.forEach((side) => {
+        side.players.forEach((player) => players.add(player));
+      });
+    });
+    return [...players].sort((a, b) => cleanLabel(a).localeCompare(cleanLabel(b)));
+  }, [summaries]);
+  const activePlayer = playerOptions.includes(selectedPlayer)
+    ? selectedPlayer
+    : "all";
+  const sortOptions =
+    activePlayer === "all" ? MATCHUP_SORT_OPTIONS : PLAYER_MATCHUP_SORT_OPTIONS;
+  const activeSortKey = sortOptions.some((option) => option.key === sortKey)
+    ? sortKey
+    : sortOptions[0].key;
+  const sortedMatchups = useMemo(() => {
+    return summaries
+      .map((summary) => ({
+        ...summary,
+        playerSide:
+          activePlayer === "all"
+            ? null
+            : summary.sides.find((side) => side.players.includes(activePlayer)),
+      }))
+      .filter((summary) => summary.games >= minGames)
+      .filter(
+        (summary) =>
+          activePlayer === "all" || showAllForPlayer || summary.playerSide,
+      )
+      .sort((a, b) => {
+        if (activeSortKey === "playerWinPct") {
+          const playerPresence =
+            Number(Boolean(b.playerSide)) - Number(Boolean(a.playerSide));
+          if (playerPresence !== 0) return playerPresence;
+          const playerWinPct = (b.playerSide?.pct || 0) - (a.playerSide?.pct || 0);
+          if (playerWinPct !== 0) return playerWinPct;
+        } else if (activeSortKey === "closest") {
+          const margin = a.margin - b.margin;
+          if (margin !== 0) return margin;
+        } else if (activeSortKey === "edge") {
+          const margin = b.margin - a.margin;
+          if (margin !== 0) return margin;
+        } else {
+          const games = b.games - a.games;
+          if (games !== 0) return games;
+        }
+
+        const games = b.games - a.games;
+        if (games !== 0) return games;
+        return a.matchup.localeCompare(b.matchup);
+      });
+  }, [activePlayer, activeSortKey, minGames, showAllForPlayer, summaries]);
 
   return (
-    <div className="max-w-4xl border border-zinc-500 bg-zinc-700 p-3 sm:p-4">
+    <div className="max-w-5xl border border-zinc-500 bg-zinc-700 p-3 sm:p-4">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="text-xs uppercase tracking-widest text-zinc-400">
-            Matchup view
+            Matchup board
           </div>
           <div className="text-[11px] text-zinc-500">
-            {view === "matrix"
-              ? "Cells show the row team's winrate against the column team."
-              : "Green shows the side with the larger share of wins."}
+            {sortedMatchups.length} matchup{sortedMatchups.length === 1 ? "" : "s"}
           </div>
         </div>
-        {teams.length >= 4 && (
+        <div className="flex flex-wrap gap-2">
+          <label className="text-xs text-zinc-400">
+            <span className="sr-only">Player</span>
+            <select
+              value={activePlayer}
+              onChange={(event) => {
+                const nextPlayer = event.target.value;
+                setSelectedPlayer(nextPlayer);
+                if (nextPlayer === "all") setShowAllForPlayer(false);
+                setSortKey(nextPlayer === "all" ? "games" : "playerWinPct");
+              }}
+              className="bg-zinc-800 border border-zinc-600 text-zinc-100 text-xs px-2 py-2 focus:outline-none focus:border-amber-400/40"
+            >
+              <option value="all">All players</option>
+              {playerOptions.map((player) => (
+                <option key={player} value={player}>
+                  {cleanLabel(player)}
+                </option>
+              ))}
+            </select>
+          </label>
+          {activePlayer !== "all" && (
+            <label className="flex items-center gap-2 border border-zinc-600 bg-zinc-800 px-2 py-2 text-xs text-zinc-300">
+              <input
+                type="checkbox"
+                checked={showAllForPlayer}
+                onChange={(event) => setShowAllForPlayer(event.target.checked)}
+                className="h-3 w-3 accent-amber-500"
+              />
+              Show all
+            </label>
+          )}
           <div className="flex gap-1 border border-zinc-600 bg-zinc-800 p-1">
+            {sortOptions.map((option) => (
             <button
+              key={option.key}
               type="button"
-              onClick={() => setView("bars")}
+              onClick={() => setSortKey(option.key)}
               className={`px-2 py-1 text-xs ${
-                view === "bars"
+                activeSortKey === option.key
                   ? "bg-amber-500 text-zinc-950"
                   : "text-zinc-300 hover:bg-zinc-700"
               }`}
             >
-              Bars
+              {option.label}
             </button>
-            <button
-              type="button"
-              onClick={() => setView("matrix")}
-              className={`px-2 py-1 text-xs ${
-                view === "matrix"
-                  ? "bg-amber-500 text-zinc-950"
-                  : "text-zinc-300 hover:bg-zinc-700"
-              }`}
-            >
-              Matrix
-            </button>
+            ))}
           </div>
-        )}
+        </div>
       </div>
-      {view === "matrix" && teams.length >= 4 ? (
-        <MatchupMatrix matchups={sortedMatchups} teams={teams} />
-      ) : (
-        <div className="space-y-4">
-          {sortedMatchups.map(([matchup, data]) => (
-            <MatchupTugBar key={matchup} matchup={matchup} data={data} />
+      {sortedMatchups.length > 0 ? (
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+          {sortedMatchups.map((summary) => (
+            <MatchupCard
+              key={summary.matchup}
+              summary={summary}
+              selectedPlayer={activePlayer === "all" ? "" : activePlayer}
+            />
           ))}
         </div>
+      ) : (
+        <p className="text-zinc-400 text-sm">No matchups meet the current cutoff.</p>
       )}
     </div>
   );
 }
 
-function MatchupTugBar({ matchup, data }) {
-  const [leftTeam, rightTeam] = matchupTeams(matchup);
-  const leftWins = data.wins?.[leftTeam] || 0;
-  const rightWins = data.wins?.[rightTeam] || 0;
-  const leftPct = data.games ? (leftWins / data.games) * 100 : 0;
-  const rightPct = data.games ? (rightWins / data.games) * 100 : 0;
-  const greenSide =
-    leftWins >= rightWins
-      ? { team: leftTeam, wins: leftWins, pct: leftPct }
-      : { team: rightTeam, wins: rightWins, pct: rightPct };
-  const redSide =
-    leftWins >= rightWins
-      ? { team: rightTeam, wins: rightWins, pct: rightPct }
-      : { team: leftTeam, wins: leftWins, pct: leftPct };
+function buildMatchupSummary(matchup, data) {
+  const games = data.games || 0;
+  const sides = matchupTeams(matchup).map((team) => {
+    const wins = data.wins?.[team] || 0;
+    return {
+      team,
+      players: teamPlayers(team),
+      wins,
+      pct: games ? (wins / games) * 100 : 0,
+    };
+  });
+  const rankedSides = [...sides].sort((a, b) => b.wins - a.wins);
+  const leader = rankedSides[0] || { team: "", wins: 0, pct: 0 };
+  const runnerUp = rankedSides[1] || { team: "", wins: 0, pct: 0 };
+  const margin = Math.max(0, leader.wins - runnerUp.wins);
 
-  return (
-    <div>
-      <div className="mb-1 grid grid-cols-[1fr_auto_1fr] items-end gap-2 text-xs">
-        <div className="min-w-0 break-words text-zinc-100">{cleanLabel(greenSide.team)}</div>
-        <div className="text-center text-[11px] text-zinc-400">
-          {data.games} games
-        </div>
-        <div className="min-w-0 break-words text-right text-zinc-100">
-          {cleanLabel(redSide.team)}
-        </div>
-      </div>
-      <div className="flex h-3 overflow-hidden bg-zinc-800">
-        <div
-          className="bg-emerald-400"
-          style={{ width: `${greenSide.pct}%` }}
-          title={`${cleanLabel(greenSide.team)} ${formatPct(greenSide.pct)}`}
-        />
-        <div
-          className="bg-red-400"
-          style={{ width: `${redSide.pct}%` }}
-          title={`${cleanLabel(redSide.team)} ${formatPct(redSide.pct)}`}
-        />
-      </div>
-      <div className="mt-1 flex justify-between text-[11px] text-zinc-400">
-        <span>
-          {greenSide.wins}W - {formatPct(greenSide.pct)}
-        </span>
-        <span>
-          {redSide.wins}W - {formatPct(redSide.pct)}
-        </span>
-      </div>
-    </div>
-  );
+  return {
+    matchup,
+    games,
+    sides,
+    margin,
+  };
 }
 
-function MatchupMatrix({ matchups, teams }) {
-  const lookup = new Map();
-  matchups.forEach(([matchup, data]) => {
-    const [leftTeam, rightTeam] = matchupTeams(matchup);
-    const leftWins = data.wins?.[leftTeam] || 0;
-    const rightWins = data.wins?.[rightTeam] || 0;
-    lookup.set(`${leftTeam}|||${rightTeam}`, {
-      winPct: data.games ? (leftWins / data.games) * 100 : null,
-      games: data.games || 0,
-    });
-    lookup.set(`${rightTeam}|||${leftTeam}`, {
-      winPct: data.games ? (rightWins / data.games) * 100 : null,
-      games: data.games || 0,
-    });
-  });
-
-  function cellStyle(value) {
-    if (!value) return { backgroundColor: "#3f3f46" };
-    const pct = value.winPct || 0;
-    const alpha = 0.25 + Math.abs(pct - 50) / 100;
-    const color = pct >= 50 ? `rgba(52, 211, 153, ${alpha})` : `rgba(248, 113, 113, ${alpha})`;
-    return { backgroundColor: color };
-  }
+function MatchupCard({ summary, selectedPlayer }) {
+  const maxWins = Math.max(...summary.sides.map((side) => side.wins));
+  const minWins = Math.min(...summary.sides.map((side) => side.wins));
+  const isTie = maxWins === minWins;
+  const displaySides = selectedPlayer
+    ? [...summary.sides].sort((a, b) => {
+        const aSelected = a.players.includes(selectedPlayer);
+        const bSelected = b.players.includes(selectedPlayer);
+        return Number(bSelected) - Number(aSelected);
+      })
+    : summary.sides;
 
   return (
-    <div className="overflow-x-auto">
-      <div
-        className="grid min-w-max gap-px text-xs"
-        style={{ gridTemplateColumns: `10rem repeat(${teams.length}, 4.5rem)` }}
-      >
-        <div />
-        {teams.map((team) => (
-          <div
-            key={team}
-            className="truncate bg-zinc-800 p-2 text-center text-zinc-400"
-            title={cleanLabel(team)}
-          >
-            {cleanLabel(team)}
+    <div className="border border-zinc-600 bg-zinc-800 p-3">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="text-[11px] uppercase tracking-widest text-zinc-500">
+          {summary.games} game{summary.games === 1 ? "" : "s"}
+        </div>
+        {summary.playerSide && (
+          <div className={winrateColor(formatPct(summary.playerSide.pct))}>
+            <span className="text-xs font-semibold">
+              {formatPct(summary.playerSide.pct)}
+            </span>
           </div>
-        ))}
-        {teams.map((rowTeam) => (
-          <Fragment key={rowTeam}>
-            <div
-              className="truncate bg-zinc-800 p-2 text-zinc-300"
-              title={cleanLabel(rowTeam)}
-            >
-              {cleanLabel(rowTeam)}
-            </div>
-            {teams.map((columnTeam) => {
-              const value =
-                rowTeam === columnTeam ? null : lookup.get(`${rowTeam}|||${columnTeam}`);
-              return (
-                <div
-                  key={`${rowTeam}-${columnTeam}`}
-                  className="h-14 p-2 text-center text-zinc-100"
-                  style={cellStyle(value)}
-                  title={
-                    value
-                      ? `${cleanLabel(rowTeam)} vs ${cleanLabel(columnTeam)}: ${formatPct(
-                          value.winPct,
-                        )} over ${value.games} games`
-                      : "No games"
-                  }
+        )}
+      </div>
+      <div className="space-y-2">
+        {displaySides.map((side) => {
+          const isSelectedSide =
+            selectedPlayer && side.players.includes(selectedPlayer);
+          const width = clamp(side.pct, side.wins > 0 ? 8 : 3, 100);
+          const barClass = isTie
+            ? "h-full bg-zinc-500"
+            : side.wins === maxWins
+              ? "h-full bg-emerald-400"
+              : "h-full bg-red-400";
+          return (
+            <div key={side.team}>
+              <div className="mb-1 flex items-start justify-between gap-3 text-xs">
+                <span
+                  className={`min-w-0 break-words ${
+                    isSelectedSide ? "text-amber-300" : "text-zinc-100"
+                  }`}
                 >
-                  {value ? Math.round(value.winPct) : ""}
-                </div>
-              );
-            })}
-          </Fragment>
-        ))}
+                  {cleanLabel(side.team)}
+                </span>
+                <span className="shrink-0 text-zinc-400">
+                  {side.wins}W / {formatPct(side.pct)}
+                </span>
+              </div>
+              <div className="h-2 overflow-hidden bg-zinc-700">
+                <div
+                  className={barClass}
+                  style={{ width: `${width}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

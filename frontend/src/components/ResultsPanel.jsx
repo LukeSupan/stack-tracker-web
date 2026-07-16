@@ -7,6 +7,7 @@ import {
   Section,
 } from "./statDisplay";
 import {
+  CompRankingChart,
   KDScatterPlot,
   MatchupVisualization,
   RankedBarChart,
@@ -281,10 +282,9 @@ function DetailedResults({ data, results }) {
 
       {data.comp_stats && (
         <Section title="Comp Stats">
-          <RankedBarChart
+          <CompRankingChart
             entries={results.compEntries}
             minGames={results.compMinGames}
-            title="Comp ranking"
           />
         </Section>
       )}

@@ -39,6 +39,13 @@ function rankedEntry(id, label, stats, extra = {}) {
   };
 }
 
+function compSize(comp) {
+  return String(comp || "")
+    .split(",")
+    .map((player) => player.trim())
+    .filter(Boolean).length;
+}
+
 export function buildResultsModel(data, filters) {
   const playerMinGames = minGamesValue(filters.playerMinGames);
   const compMinGames = minGamesValue(filters.compMinGames);
@@ -69,7 +76,9 @@ export function buildResultsModel(data, filters) {
       }),
   );
   const compEntries = Object.entries(data?.comp_stats || {}).map(([comp, stats]) =>
-    rankedEntry(comp, comp.replaceAll(",", ", "), stats),
+    rankedEntry(comp, comp.replaceAll(",", ", "), stats, {
+      compSize: compSize(comp),
+    }),
   );
   const roleCompEntries = Object.entries(data?.role_comp_stats || {}).map(
     ([comp, stats]) =>
