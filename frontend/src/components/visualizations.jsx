@@ -80,6 +80,33 @@ function detailVolumeClass(value, maxValue, metricKey, activeSortKey) {
   return metricKey === activeSortKey ? volumeColor(value, maxValue) : "text-zinc-400";
 }
 
+function layoutScatterLabels(points) {
+  const placed = [];
+  return points
+    .map((point, index) => ({ ...point, index }))
+    .sort((a, b) => a.cy - b.cy || a.cx - b.cx)
+    .map((point) => {
+      let labelX = point.cx + point.radius + 4;
+      let labelY = point.cy + 3;
+
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        const overlaps = placed.some(
+          (label) =>
+            Math.abs(label.x - labelX) < 54 && Math.abs(label.y - labelY) < 13,
+        );
+        if (!overlaps) break;
+        labelY += attempt % 2 === 0 ? 12 : -18;
+        labelX += attempt % 2 === 0 ? 5 : 8;
+      }
+
+      labelX = clamp(labelX, 48, 246);
+      labelY = clamp(labelY, 48, 254);
+      placed.push({ x: labelX, y: labelY });
+      return { ...point, labelX, labelY };
+    })
+    .sort((a, b) => a.index - b.index);
+}
+
 export function RankedBarChart({
   entries,
   minGames = 0,
@@ -329,6 +356,20 @@ export function KDScatterPlot({ entries, minGames = 0 }) {
       radius,
     };
   });
+  const labelBudget = Math.min(8, Math.max(4, Math.ceil(plottedPoints.length / 2)));
+  const labeledIds = new Set(
+    [...plottedPoints]
+      .sort((a, b) => {
+        const games = (b.games || 0) - (a.games || 0);
+        if (games !== 0) return games;
+        return Math.abs((b.kd || 0) - 1) - Math.abs((a.kd || 0) - 1);
+      })
+      .slice(0, labelBudget)
+      .map((entry) => entry.id || entry.label),
+  );
+  const labelPoints = layoutScatterLabels(
+    plottedPoints.filter((entry) => labeledIds.has(entry.id || entry.label)),
+  );
 
   return (
     <div className="max-w-3xl border border-zinc-500 bg-zinc-700 p-3 sm:p-4">
@@ -445,6 +486,34 @@ export function KDScatterPlot({ entries, minGames = 0 }) {
             </g>
           );
         })}
+        {labelPoints.map((entry) => (
+          <g key={`label-${entry.id || entry.label}`}>
+            <line
+              x1={entry.cx + entry.radius}
+              y1={entry.cy}
+              x2={entry.labelX - 3}
+              y2={entry.labelY - 3}
+              stroke="#71717a"
+              strokeOpacity="0.22"
+            />
+            <rect
+              x={entry.labelX - 2}
+              y={entry.labelY - 9}
+              width={Math.min(70, String(entry.label).length * 5 + 6)}
+              height="12"
+              fill="#27272a"
+              fillOpacity="0.78"
+            />
+            <text
+              x={entry.labelX}
+              y={entry.labelY}
+              fill="#e4e4e7"
+              fontSize="8"
+            >
+              {entry.label}
+            </text>
+          </g>
+        ))}
       </svg>
     </div>
   );
