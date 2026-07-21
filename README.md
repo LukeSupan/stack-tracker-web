@@ -22,7 +22,7 @@ Your first line should always be a tag. There are currently a few supported tags
 - lanes_detailed -> Left/Mid/Right/Result
 
 - generic -> Players/Result
-- generc_versus -> Players/Result|Players/Result
+- generic_versus -> Players/Result|Players/Result
 
 - moba -> Top/Jungle/Mid/ADC/Support/Result
 
