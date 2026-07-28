@@ -56,3 +56,15 @@ create trigger set_saves_updated_at
 before update on public.saves
 for each row
 execute function public.set_updated_at();
+
+create or replace function public.supabase_heartbeat()
+returns jsonb
+language sql
+security invoker
+set search_path = ''
+as $$
+  select jsonb_build_object('ok', true, 'checked_at', now());
+$$;
+
+revoke all on function public.supabase_heartbeat() from public;
+grant execute on function public.supabase_heartbeat() to anon, authenticated, service_role;
