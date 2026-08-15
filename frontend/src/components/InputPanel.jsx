@@ -13,6 +13,7 @@ export function InputPanel({
   savesProps,
   authProps,
   onShowHelp,
+  onShowPrivacy,
   onSubmit,
 }) {
   return (
@@ -52,6 +53,16 @@ export function InputPanel({
         ) : (
           <AuthPanel {...authProps} />
         )}
+
+        <div className="mt-5 border-t border-zinc-700 pt-3">
+          <button
+            type="button"
+            onClick={onShowPrivacy}
+            className="text-zinc-500 hover:text-amber-400 text-xs underline transition-colors"
+          >
+            Privacy
+          </button>
+        </div>
       </div>
     </div>
   );

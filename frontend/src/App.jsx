@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { HowToUseModal } from "./components/HelpModal";
+import { HowToUseModal, PrivacyModal } from "./components/HelpModal";
 import { InputPanel } from "./components/InputPanel";
 import { ResultsPanel } from "./components/ResultsPanel";
 import { useAuthSession } from "./hooks/useAuthSession";
@@ -29,6 +29,7 @@ export default function App() {
   const [autosaveWarning, setAutosaveWarning] = useState("");
   const [loading, setLoading] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
   const [analysis, setAnalysis] = useState(null);
   const [analysisMode, setAnalysisMode] = useState(
     () => localStorage.getItem(ANALYSIS_MODE_KEY) || "vegeta",
@@ -87,7 +88,10 @@ export default function App() {
   }, [resultsViewMode]);
   useEffect(() => {
     function onKey(event) {
-      if (event.key === "Escape") setShowHelp(false);
+      if (event.key === "Escape") {
+        setShowHelp(false);
+        setShowPrivacy(false);
+      }
     }
 
     window.addEventListener("keydown", onKey);
@@ -227,6 +231,7 @@ export default function App() {
       style={{ fontFamily: "'IBM Plex Mono', monospace" }}
     >
       {showHelp && <HowToUseModal onClose={() => setShowHelp(false)} />}
+      {showPrivacy && <PrivacyModal onClose={() => setShowPrivacy(false)} />}
 
       <div className="flex flex-col lg:flex-row min-h-screen">
         <InputPanel
@@ -241,6 +246,7 @@ export default function App() {
           savesProps={{ ...savesProps, onSignOut: signOut }}
           authProps={authProps}
           onShowHelp={() => setShowHelp(true)}
+          onShowPrivacy={() => setShowPrivacy(true)}
           onSubmit={submitData}
         />
 
@@ -262,6 +268,7 @@ export default function App() {
             filterSetters={filterSetters}
             resultsViewMode={resultsViewMode}
             setResultsViewMode={setResultsViewMode}
+            onShowPrivacy={() => setShowPrivacy(true)}
           />
         )}
       </div>

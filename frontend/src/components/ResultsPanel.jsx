@@ -27,6 +27,7 @@ export function ResultsPanel({
   filterSetters,
   resultsViewMode,
   setResultsViewMode,
+  onShowPrivacy,
 }) {
   const results = buildResultsModel(data, filters);
 
@@ -41,6 +42,7 @@ export function ResultsPanel({
         runScouter={runScouter}
         filters={filters}
         filterSetters={filterSetters}
+        onShowPrivacy={onShowPrivacy}
       />
 
       <ResultsModeTabs
@@ -66,6 +68,7 @@ function ScouterPanel({
   runScouter,
   filters,
   filterSetters,
+  onShowPrivacy,
 }) {
   return (
     <Section title="SCOUTER ANALYSIS">
@@ -104,6 +107,16 @@ function ScouterPanel({
 
         <p className="text-zinc-500 text-[11px] mb-3">
           These cutoffs filter visible stats and Scouter input.
+        </p>
+        <p className="text-zinc-400 text-[11px] mb-3 leading-relaxed">
+          AI analysis sends the filtered stats and save name to Anthropic.
+          <button
+            type="button"
+            onClick={onShowPrivacy}
+            className="text-amber-400 hover:text-amber-300 underline ml-1"
+          >
+            Privacy
+          </button>
         </p>
         {analysis ? (
           <p className="text-zinc-100 text-sm leading-relaxed whitespace-pre-line">
